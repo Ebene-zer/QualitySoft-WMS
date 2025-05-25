@@ -1,6 +1,4 @@
-import sqlite3
 from database.db_handler import get_db_connection
-
 
 class Customer:
     def __init__(self, customer_id, name, phone_number, address):
@@ -39,7 +37,7 @@ class Customer:
         cursor.execute("""
             DELETE FROM customers
             WHERE customer_id = ?
-        """, (customer_id,))
+        """, (customer_id,))  # <-- tuple!
         connection.commit()
         connection.close()
 
@@ -62,7 +60,7 @@ class Customer:
         cursor.execute("""
             SELECT customer_id, name, phone_number, address FROM customers
             WHERE customer_id = ?
-        """, (customer_id,))
+        """, (customer_id,))  # <-- tuple!
         row = cursor.fetchone()
         connection.close()
         return Customer(*row) if row else None
@@ -72,11 +70,11 @@ class Customer:
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT o.order_id, o.order_date, o.total_amount
-            FROM orders o
+            SELECT o.invoice_id, o.invoice_date, o.total_amount
+            FROM invoices o
             WHERE o.customer_id = ?
-            ORDER BY o.order_date DESC
-        """, (customer_id,))
+            ORDER BY o.invoice_date DESC
+        """, (customer_id,))  # <-- tuple!
         history = cursor.fetchall()
         connection.close()
         return history
