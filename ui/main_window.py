@@ -3,8 +3,12 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QPalette, QBrush, QPixmap
 import sys
 
-# Import product window (which we'll build next)
+# Import windows
 from ui.product_window import ProductWindow
+from ui.customer_window import CustomerWindow
+from ui.invoice_window import InvoiceWindow
+from ui.receipt_window import ReceiptWindow
+
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -17,20 +21,21 @@ class MainWindow(QWidget):
 
         layout = QVBoxLayout()
 
+#Button connections for products, customer, invoice and view receipt
         self.product_button = QPushButton("🛒 Manage Products")
         self.product_button.clicked.connect(self.open_product_window)
         layout.addWidget(self.product_button)
 
         self.customer_button = QPushButton("👥 Manage Customers")
-        self.customer_button.clicked.connect(self.show_placeholder)
+        self.customer_button.clicked.connect(self.open_customer_window)
         layout.addWidget(self.customer_button)
 
         self.invoice_button = QPushButton("🧾 Create Invoice")
-        self.invoice_button.clicked.connect(self.show_placeholder)
+        self.invoice_button.clicked.connect(self.open_invoice_window)
         layout.addWidget(self.invoice_button)
 
         self.receipt_button = QPushButton("📄 View Receipts")
-        self.receipt_button.clicked.connect(self.show_placeholder)
+        self.receipt_button.clicked.connect(self.open_receipt_window)
         layout.addWidget(self.receipt_button)
 
         self.setLayout(layout)
@@ -47,8 +52,22 @@ class MainWindow(QWidget):
         self.product_window = ProductWindow()
         self.product_window.show()
 
-    def show_placeholder(self):
+    def open_customer_window(self):
+        self.customer_window = CustomerWindow()
+        self.customer_window.show()
+
+    def open_invoice_window(self):
+        self.invoice_window = InvoiceWindow()
+        self.invoice_window.show()
+
+    def open_receipt_window(self):
+        self.receipt_window = ReceiptWindow()
+        self.receipt_window.show()
+""""
+   def show_placeholder(self):
         QMessageBox.information(self, "Info", "This feature is coming soon.")
+
+"""
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

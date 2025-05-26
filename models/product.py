@@ -23,7 +23,7 @@ class Product:
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
-            UPDATE products 
+            UPDATE products
             SET name = ?, price = ?, stock_quantity = ?
             WHERE product_id = ?
         """, (name, price, stock_quantity, product_id))
@@ -37,7 +37,7 @@ class Product:
         cursor.execute("""
             DELETE FROM products
             WHERE product_id = ?
-        """, (product_id,))  # <-- tuple!
+        """, (product_id,))
         connection.commit()
         connection.close()
 
@@ -50,8 +50,7 @@ class Product:
         """)
         rows = cursor.fetchall()
         connection.close()
-        products = [Product(*row) for row in rows]
-        return products
+        return [Product(*row) for row in rows]
 
     @staticmethod
     def get_product_by_id(product_id):
@@ -60,19 +59,25 @@ class Product:
         cursor.execute("""
             SELECT product_id, name, price, stock_quantity FROM products
             WHERE product_id = ?
-        """, (product_id,))  # <-- tuple!
+        """, (product_id,))
         row = cursor.fetchone()
         connection.close()
         return Product(*row) if row else None
 
     @staticmethod
-    def update_stock(product_id, new_quantity):
-        connection = get_db_connection()
+    def update_stock(product_id, new_quantity, connection=None):
+        own_connection = False
+        if connection is None:
+            connection = get_db_connection()
+            own_connection = True
+
         cursor = connection.cursor()
         cursor.execute("""
             UPDATE products
             SET stock_quantity = ?
             WHERE product_id = ?
         """, (new_quantity, product_id))
-        connection.commit()
-        connection.close()
+
+        if own_connection:
+            connection.commit()
+            connection.close()

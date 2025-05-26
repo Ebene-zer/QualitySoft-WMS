@@ -37,7 +37,7 @@ class Customer:
         cursor.execute("""
             DELETE FROM customers
             WHERE customer_id = ?
-        """, (customer_id,))  # <-- tuple!
+        """, (customer_id,))
         connection.commit()
         connection.close()
 
@@ -50,8 +50,7 @@ class Customer:
         """)
         rows = cursor.fetchall()
         connection.close()
-        customers = [Customer(*row) for row in rows]
-        return customers
+        return [Customer(*row) for row in rows]
 
     @staticmethod
     def get_customer_by_id(customer_id):
@@ -60,7 +59,7 @@ class Customer:
         cursor.execute("""
             SELECT customer_id, name, phone_number, address FROM customers
             WHERE customer_id = ?
-        """, (customer_id,))  # <-- tuple!
+        """, (customer_id,))
         row = cursor.fetchone()
         connection.close()
         return Customer(*row) if row else None
@@ -70,11 +69,11 @@ class Customer:
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT o.invoice_id, o.invoice_date, o.total_amount
-            FROM invoices o
-            WHERE o.customer_id = ?
-            ORDER BY o.invoice_date DESC
-        """, (customer_id,))  # <-- tuple!
+            SELECT invoice_id, invoice_date, total_amount
+            FROM invoices
+            WHERE customer_id = ?
+            ORDER BY invoice_date DESC
+        """, (customer_id,))
         history = cursor.fetchall()
         connection.close()
         return history

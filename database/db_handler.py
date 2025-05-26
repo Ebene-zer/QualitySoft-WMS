@@ -4,8 +4,9 @@ import os
 DB_NAME = "wholesale.db"
 
 def get_db_connection():
-    connection = sqlite3.connect(DB_NAME)
+    connection = sqlite3.connect(DB_NAME, timeout=10)
     return connection
+
 
 def initialize_database():
     # Check if database already exists
