@@ -2,20 +2,12 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QHBoxLayout
 )
 from PyQt6.QtGui import QPalette, QBrush, QPixmap
-from PyQt6.QtCore import QSize, Qt
-
+from PyQt6.QtCore import Qt
 from models.customer import Customer
 
-
-class CustomerWindow(QWidget):
+class CustomerView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Customer Management")
-
-        # Allow resizing and maximization
-        self.resize(800, 600)
-        self.setMinimumSize(600, 400)
-
         self.set_background_image("bg_images/customer1.jpeg")
 
         self.layout = QVBoxLayout()
@@ -33,16 +25,16 @@ class CustomerWindow(QWidget):
         self.address_input.setPlaceholderText("Address")
         self.layout.addWidget(self.address_input)
 
-        # Add customer button
+        # Add Customer Button
         add_button = QPushButton("Add Customer")
         add_button.clicked.connect(self.add_customer)
         self.layout.addWidget(add_button)
 
-        # Customer list
+        # Customer List
         self.customer_list = QListWidget()
         self.layout.addWidget(self.customer_list)
 
-        # Buttons for update and delete
+        # Update / Delete Buttons
         button_layout = QHBoxLayout()
 
         update_button = QPushButton("Update Selected")
@@ -55,10 +47,9 @@ class CustomerWindow(QWidget):
 
         self.layout.addLayout(button_layout)
 
-        # Load existing customers into list
-        self.load_customers()
-
         self.setLayout(self.layout)
+
+        self.load_customers()
 
     def set_background_image(self, image_path):
         palette = QPalette()

@@ -1,54 +1,55 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox,
-    QHBoxLayout, QComboBox
+    QHBoxLayout, QComboBox, QCompleter
 )
 from PyQt6.QtGui import QPalette, QBrush, QPixmap
 from PyQt6.QtCore import QSize, Qt
-
 from models.customer import Customer
 from models.product import Product
 from models.invoice import Invoice
 
-
-class InvoiceWindow(QWidget):
+class InvoiceView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Create Invoice")
-
-        self.resize(800, 600)
-        self.setMinimumSize(600, 400)
-
-        self.set_background_image("bg_images/invoice2.png")
+        self.set_background_image("bg_images/image1.png")
 
         self.layout = QVBoxLayout()
 
-        # Customer selection
+        # Customer Dropdown
         self.customer_dropdown = QComboBox()
+        self.customer_dropdown.setEditable(True)
+        customer_completer = QCompleter()
+        customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.customer_dropdown.setCompleter(customer_completer)
         self.load_customers()
         self.layout.addWidget(QLabel("Select Customer:"))
         self.layout.addWidget(self.customer_dropdown)
 
-        # Product selection
+        # Product Dropdown
         self.product_dropdown = QComboBox()
+        self.product_dropdown.setEditable(True)
+        product_completer = QCompleter()
+        product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.product_dropdown.setCompleter(product_completer)
         self.load_products()
         self.layout.addWidget(QLabel("Select Product:"))
         self.layout.addWidget(self.product_dropdown)
 
-        # Quantity input
+        # Quantity Input
         self.quantity_input = QLineEdit()
         self.quantity_input.setPlaceholderText("Quantity")
         self.layout.addWidget(self.quantity_input)
 
-        # Add to invoice button
+        # Add Item Button
         add_item_button = QPushButton("Add to Invoice")
         add_item_button.clicked.connect(self.add_item_to_invoice)
         self.layout.addWidget(add_item_button)
 
-        # Invoice items list
+        # Invoice Items List
         self.invoice_items_list = QListWidget()
         self.layout.addWidget(self.invoice_items_list)
 
-        # Discount & tax
+        # Discount and Tax Inputs
         self.discount_input = QLineEdit()
         self.discount_input.setPlaceholderText("Discount (GHS)")
         self.layout.addWidget(self.discount_input)
@@ -57,18 +58,17 @@ class InvoiceWindow(QWidget):
         self.tax_input.setPlaceholderText("Tax (GHS)")
         self.layout.addWidget(self.tax_input)
 
-        # Total display
+        # Total Display
         self.total_label = QLabel("Total: GHS 0.00")
         self.layout.addWidget(self.total_label)
 
-        # Save invoice button
+        # Save Invoice Button
         save_invoice_button = QPushButton("Save Invoice")
         save_invoice_button.clicked.connect(self.save_invoice)
         self.layout.addWidget(save_invoice_button)
 
         self.setLayout(self.layout)
 
-        # Running invoice item list
         self.items = []
 
     def set_background_image(self, image_path):
@@ -82,14 +82,18 @@ class InvoiceWindow(QWidget):
     def load_customers(self):
         self.customer_dropdown.clear()
         customers = Customer.get_all_customers()
-        for customer in customers:
-            self.customer_dropdown.addItem(f"{customer.customer_id} - {customer.name}")
+        customer_names = [f"{c.customer_id} - {c.name}" for c in customers]
+        self.customer_dropdown.addItems(customer_names)
+        self.customer_dropdown.completer().setModel(self.customer_dropdown.model())
+
 
     def load_products(self):
         self.product_dropdown.clear()
         products = Product.get_all_products()
-        for product in products:
-            self.product_dropdown.addItem(f"{product.product_id} - {product.name} (GHS {product.price})")
+        product_names = [f"{p.product_id} - {p.name}" for p in products]
+        self.product_dropdown.addItems(product_names)
+        self.product_dropdown.completer().setModel(self.product_dropdown.model())
+
 
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
@@ -110,7 +114,6 @@ class InvoiceWindow(QWidget):
             QMessageBox.warning(self, "Stock Error", f"Only {product.stock_quantity} units of {product.name} available.")
             return
 
-        # Add to items list
         self.items.append({
             "product_id": product.product_id,
             "quantity": quantity,
@@ -118,9 +121,7 @@ class InvoiceWindow(QWidget):
         })
 
         self.invoice_items_list.addItem(f"{product.name} x {quantity} @ GHS {product.price}")
-
         self.update_total()
-
         self.quantity_input.clear()
 
     def update_total(self):
@@ -157,6 +158,15 @@ class InvoiceWindow(QWidget):
             invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
             QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created successfully.")
             Invoice.print_receipt(invoice_id)
-            self.close()
+            self.reset_invoice_form()
         except ValueError as e:
             QMessageBox.warning(self, "Error", str(e))
+
+    def reset_invoice_form(self):
+        self.invoice_items_list.clear()
+        self.discount_input.clear()
+        self.tax_input.clear()
+        self.total_label.setText("Total: GHS 0.00")
+        self.items = []
+        self.load_products()
+        self.load_customers()

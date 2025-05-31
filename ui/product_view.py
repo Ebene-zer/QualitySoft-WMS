@@ -2,23 +2,17 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QHBoxLayout
 )
 from PyQt6.QtGui import QPalette, QBrush, QPixmap
-from PyQt6.QtCore import QSize, Qt
-
+from PyQt6.QtCore import Qt, QSize
 from models.product import Product
 
-
-class ProductWindow(QWidget):
+class ProductView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Product Management")
-        self.resize(800, 600)
-        self.setMinimumSize(600, 400)
-
-        self.set_background_image("bg_images/products1.jpeg")
+        self.set_background_image("bg_images/image1.png")
 
         self.layout = QVBoxLayout()
 
-        # Product input fields
+        # Input fields
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Product Name")
         self.layout.addWidget(self.name_input)
@@ -31,16 +25,16 @@ class ProductWindow(QWidget):
         self.stock_input.setPlaceholderText("Stock Quantity")
         self.layout.addWidget(self.stock_input)
 
-        # Add product button
+        # Add Product Button
         add_button = QPushButton("Add Product")
         add_button.clicked.connect(self.add_product)
         self.layout.addWidget(add_button)
 
-        # Product list
+        # Product List
         self.product_list = QListWidget()
         self.layout.addWidget(self.product_list)
 
-        # Buttons for update and delete
+        # Update / Delete Buttons
         button_layout = QHBoxLayout()
 
         update_button = QPushButton("Update Selected")
@@ -53,10 +47,9 @@ class ProductWindow(QWidget):
 
         self.layout.addLayout(button_layout)
 
-        # Load existing products into list
-        self.load_products()
-
         self.setLayout(self.layout)
+
+        self.load_products()
 
     def set_background_image(self, image_path):
         palette = QPalette()
@@ -72,7 +65,7 @@ class ProductWindow(QWidget):
             price = float(self.price_input.text().strip())
             stock = int(self.stock_input.text().strip())
         except ValueError:
-            QMessageBox.warning(self, "Input Error", "Enter valid values for price and stock.")
+            QMessageBox.warning(self, "Input Error", "Enter valid numbers for price and stock.")
             return
 
         if not name:

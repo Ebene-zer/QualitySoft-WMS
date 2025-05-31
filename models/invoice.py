@@ -216,6 +216,8 @@ class Invoice:
     def export_receipt_to_pdf(invoice_id, output_path):
         from reportlab.lib.pagesizes import A4
         from reportlab.pdfgen import canvas
+        from reportlab.platypus import Table, TableStyle
+        from reportlab.lib import colors
 
         invoice = Invoice.get_invoice_by_id(invoice_id)
         if not invoice:
@@ -223,41 +225,62 @@ class Invoice:
 
         c = canvas.Canvas(output_path, pagesize=A4)
         width, height = A4
-
         y = height - 50
 
-        c.setFont("Helvetica-Bold", 18)
-        c.drawString(50, y, f"Invoice #{invoice['invoice_id']}")
+        # Header
+        c.setFont("Helvetica-Bold", 20)
+        c.drawString(50, y, "Wholesale Management System")
         y -= 30
+
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(50, y, f"Invoice #{invoice['invoice_id']}")
+        y -= 25
 
         c.setFont("Helvetica", 12)
         c.drawString(50, y, f"Date: {invoice['invoice_date']}")
-        y -= 20
+        y -= 18
         c.drawString(50, y, f"Customer: {invoice['customer_name']}")
-        y -= 30
+        y -= 25
 
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(50, y, "Items:")
-        y -= 20
-
-        c.setFont("Helvetica", 12)
+        # Table headers and data
+        table_data = [["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]]
         for item in invoice['items']:
-            c.drawString(60, y, f"{item['product_name']} x {item['quantity']} @ GHS {item['unit_price']}")
-            y -= 20
-            if y < 50:
-                c.showPage()
-                y = height - 50
+            subtotal = item['quantity'] * item['unit_price']
+            table_data.append([
+                item['product_name'],
+                str(item['quantity']),
+                f"{item['unit_price']:.2f}",
+                f"{subtotal:.2f}"
+            ])
 
-        y -= 10
+        table = Table(table_data, colWidths=[180, 80, 100, 100])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+
+        table.wrapOn(c, width, height)
+        table_height = table._height
+        table.drawOn(c, 50, y - table_height)
+        y -= table_height + 20
+
+        # Totals
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(50, y, f"Discount: GHS {invoice['discount']}")
-        y -= 20
-        c.drawString(50, y, f"Tax: GHS {invoice['tax']}")
-        y -= 20
-        c.drawString(50, y, f"Total: GHS {invoice['total_amount']}")
+        c.drawString(50, y, f"Discount: GHS {invoice['discount']:.2f}")
+        y -= 18
+        c.drawString(50, y, f"Tax: GHS {invoice['tax']:.2f}")
+        y -= 18
+        c.drawString(50, y, f"Total: GHS {invoice['total_amount']:.2f}")
         y -= 30
 
-        c.drawString(50, y, "Thank you for buying from us!")
+        # Footer
+        c.setFont("Helvetica-Oblique", 10)
+        c.setFillColor(colors.darkgray)
+        c.drawString(50, 30, "Thank you for buying from us!")
 
         c.save()
-

@@ -1,5 +1,4 @@
 import sqlite3
-import os
 
 DB_NAME = "wholesale.db"
 
@@ -7,19 +6,13 @@ def get_db_connection():
     connection = sqlite3.connect(DB_NAME, timeout=10)
     return connection
 
-
 def initialize_database():
-    # Check if database already exists
-    if os.path.exists(DB_NAME):
-        print("Database already exists.")
-        return
-
     connection = get_db_connection()
     cursor = connection.cursor()
 
     # Create products table
     cursor.execute("""
-        CREATE TABLE products (
+        CREATE TABLE IF NOT EXISTS products (
             product_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             price REAL NOT NULL,
@@ -29,7 +22,7 @@ def initialize_database():
 
     # Create customers table
     cursor.execute("""
-        CREATE TABLE customers (
+        CREATE TABLE IF NOT EXISTS customers (
             customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             phone_number TEXT,
@@ -39,7 +32,7 @@ def initialize_database():
 
     # Create invoices table
     cursor.execute("""
-        CREATE TABLE invoices (
+        CREATE TABLE IF NOT EXISTS invoices (
             invoice_id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer_id INTEGER NOT NULL,
             invoice_date TEXT NOT NULL,
@@ -50,9 +43,9 @@ def initialize_database():
         )
     """)
 
-    # Create invoice_items table (many products per invoice)
+    # Create invoice_items table
     cursor.execute("""
-        CREATE TABLE invoice_items (
+        CREATE TABLE IF NOT EXISTS invoice_items (
             item_id INTEGER PRIMARY KEY AUTOINCREMENT,
             invoice_id INTEGER NOT NULL,
             product_id INTEGER NOT NULL,
@@ -63,8 +56,15 @@ def initialize_database():
         )
     """)
 
+    # Create users table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user'
+        )
+    """)
+
     connection.commit()
     connection.close()
-
-
-

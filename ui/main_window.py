@@ -1,76 +1,101 @@
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QMessageBox
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
+)
 from PyQt6.QtGui import QPalette, QBrush, QPixmap
+from PyQt6.QtCore import QSize, Qt
 import sys
 
-# Import windows
-from ui.product_window import ProductWindow
-from ui.customer_window import CustomerWindow
-from ui.invoice_window import InvoiceWindow
-from ui.receipt_window import ReceiptWindow
+from ui.product_view import ProductView
+from ui.customer_view import CustomerView
+from ui.invoice_view import InvoiceView
+from ui.receipt_view import ReceiptView
+from ui.user_view import UserView
+
 
 
 class MainWindow(QWidget):
-    def __init__(self):
+    def __init__(self, logged_in_user):
         super().__init__()
-        self.setWindowTitle("QualitySoft WHOLESALE MANAGEMENT SYSTEM")
-        self.resize(800, 600)
-        self.setMinimumSize(600, 400)
+        self.logged_in_user = logged_in_user
+        self.setWindowTitle("QUALITYSOFT WHOLESALE MANAGEMENT SYSTEM")
+        self.resize(1000, 700)
+        self.setMinimumSize(800, 500)
 
-        self.set_background_image("bg_images/main2.jpeg")
+        self.set_background_image("bg_images/image1.png")
 
-        layout = QVBoxLayout()
+        # Main Layout
+        main_layout = QHBoxLayout()
 
-#Button connections for products, customer, invoice and view receipt
-        self.product_button = QPushButton("🛒 Manage Products")
-        self.product_button.clicked.connect(self.open_product_window)
-        layout.addWidget(self.product_button)
+        # Sidebar Layout
+        sidebar_layout = QVBoxLayout()
+        sidebar_layout.setSpacing(20)
 
-        self.customer_button = QPushButton("👥 Manage Customers")
-        self.customer_button.clicked.connect(self.open_customer_window)
-        layout.addWidget(self.customer_button)
+        btn_products = QPushButton("🛒 Products")
+        btn_products.clicked.connect(lambda: self.switch_view(0))
+        sidebar_layout.addWidget(btn_products)
 
-        self.invoice_button = QPushButton("🧾 Create Invoice")
-        self.invoice_button.clicked.connect(self.open_invoice_window)
-        layout.addWidget(self.invoice_button)
+        btn_customers = QPushButton("👥 Customers")
+        btn_customers.clicked.connect(lambda: self.switch_view(1))
+        sidebar_layout.addWidget(btn_customers)
 
-        self.receipt_button = QPushButton("📄 View Receipts")
-        self.receipt_button.clicked.connect(self.open_receipt_window)
-        layout.addWidget(self.receipt_button)
+        btn_invoices = QPushButton("🧾 Invoices")
+        btn_invoices.clicked.connect(lambda: self.switch_view(2))
+        sidebar_layout.addWidget(btn_invoices)
 
-        self.setLayout(layout)
+        btn_receipts = QPushButton("📄 Receipts")
+        btn_receipts.clicked.connect(lambda: self.switch_view(3))
+        sidebar_layout.addWidget(btn_receipts)
+
+        # Only show User Management button if admin
+        if self.logged_in_user == "admin":
+            btn_users = QPushButton("🔐 Users")
+            btn_users.clicked.connect(lambda: self.switch_view(4))
+            sidebar_layout.addWidget(btn_users)
+
+        sidebar_layout.addStretch()
+
+        # Central stacked widget
+        self.stacked_widget = QStackedWidget()
+        self.stacked_widget.addWidget(ProductView())
+        self.stacked_widget.addWidget(CustomerView())
+        self.stacked_widget.addWidget(InvoiceView())
+        self.stacked_widget.addWidget(ReceiptView())
+        self.stacked_widget.addWidget(UserView())  # <--- instantiate the UserView correctly
+
+        # Add layouts to main layout
+        main_layout.addLayout(sidebar_layout)
+        main_layout.addWidget(self.stacked_widget)
+
+        self.setLayout(main_layout)
 
     def set_background_image(self, image_path):
-        palette = QPalette()
-        pixmap = QPixmap(image_path)
-        if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(self.size(), Qt.AspectRatioMode.IgnoreAspectRatio)
+        self.bg_pixmap = QPixmap(image_path)
+
+    def resizeEvent(self, event):
+        if hasattr(self, "bg_pixmap") and not self.bg_pixmap.isNull():
+            scaled_pixmap = self.bg_pixmap.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding)
+            palette = QPalette()
             palette.setBrush(QPalette.ColorRole.Window, QBrush(scaled_pixmap))
             self.setPalette(palette)
+        super().resizeEvent(event)
 
-    def open_product_window(self):
-        self.product_window = ProductWindow()
-        self.product_window.show()
+    def switch_view(self, index):
+        self.stacked_widget.setCurrentIndex(index)
 
-    def open_customer_window(self):
-        self.customer_window = CustomerWindow()
-        self.customer_window.show()
+        # Refresh relevant view when switched to
+        widget = self.stacked_widget.currentWidget()
+        if hasattr(widget, "load_customers"):
+            widget.load_customers()
+        if hasattr(widget, "load_products"):
+            widget.load_products()
+        if hasattr(widget, "load_invoice_ids"):
+            widget.load_invoice_ids()
+        if hasattr(widget, "load_users"):
+            widget.load_users()
 
-    def open_invoice_window(self):
-        self.invoice_window = InvoiceWindow()
-        self.invoice_window.show()
-
-    def open_receipt_window(self):
-        self.receipt_window = ReceiptWindow()
-        self.receipt_window.show()
-""""
-   def show_placeholder(self):
-        QMessageBox.information(self, "Info", "This feature is coming soon.")
-
-"""
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow("admin")  # for testing directly from this file
     window.show()
     sys.exit(app.exec())
