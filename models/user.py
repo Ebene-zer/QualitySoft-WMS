@@ -1,8 +1,17 @@
 import hashlib
 import os
+
 from database.db_handler import get_db_connection
 
+#User Class
 class User:
+    def __init__(self, user_id, username, password_hash, role):
+        self.user_id = user_id
+        self.username = username
+        self.password_hash = password_hash
+        self.role = role
+
+#Password Hashing
     @staticmethod
     def hash_password(password, salt=None):
         if salt is None:
@@ -18,6 +27,7 @@ class User:
         # Return combined salt + hash as hex string for storage
         return salt.hex() + pwd_hash.hex()
 
+#Password verification
     @staticmethod
     def verify_password(stored_password_hash, password_attempt):
         salt_hex = stored_password_hash[:32]  # first 16 bytes (32 hex chars)
@@ -32,8 +42,9 @@ class User:
         )
         return attempt_hash.hex() == hash_hex
 
+#Add user method, (for Admin and CEO only)
     @staticmethod
-    def add_user(username, password, role='user'):
+    def add_user(username, password, role='admin'):
         connection = get_db_connection()
         cursor = connection.cursor()
         password_hash = User.hash_password(password)
@@ -48,6 +59,8 @@ class User:
         finally:
             connection.close()
 
+
+#Authenticate Login details
     @staticmethod
     def authenticate(username, password):
         try:

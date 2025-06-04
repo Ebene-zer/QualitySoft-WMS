@@ -1,36 +1,66 @@
+#Import Framework and Library
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QHBoxLayout, QComboBox
+    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QHBoxLayout, QComboBox, QFrame
 )
-from PyQt6.QtGui import QPalette, QBrush, QPixmap
-from PyQt6.QtCore import Qt
 from models.user import User
 import sqlite3
 from database.db_handler import get_db_connection
 
-
+#User View Class
 class UserView(QWidget):
     def __init__(self):
         super().__init__()
-        self.set_background_image("bg_images/user2.jpeg")
+        #UserView Style
+        self.setStyleSheet("""
+              QWidget {
+                  background-color: #F4F6F7;
+              }
+              QLineEdit {
+                  padding: 8px;
+                  border: 1px solid #ccc;
+                  border-radius: 6px;
+                  font-size: 14px;
+              }
+              QPushButton {
+                  padding: 9px 15px;
+                  border-radius: 6px;
+                  background-color: #2E86C1;
+                  color: white;
+                  font-weight: bold;
+              }
+              QPushButton:hover {
+                  background-color: #21618C;
+              }
+              QListWidget {
+                  border: 1px solid #ccc;
+                  border-radius: 6px;
+                  padding: 6px;
+              }
+          """)
+
+        main_layout = QVBoxLayout() #Set Layout
+
+        card = QFrame()
+        card.setStyleSheet("background-color: white; border-radius: 10px; padding: 20px;")
+        card_layout = QVBoxLayout()
 
         self.layout = QVBoxLayout()
 
-        # Input fields
         # Input username
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
         self.layout.addWidget(self.username_input)
 
-        #Input user password
+        # Input password
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.layout.addWidget(self.password_input)
 
-        #Role selection ComboBox
+        # Role selection ComboBox
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["user", "admin"])
-        self.role_combo.setEditable(True) #Enable search/filter
+        self.role_combo.addItems(["Admin", "Manager", "C.E.O"])
+        self.role_combo.setEditable(True)  # Enable search/filter
         self.layout.addWidget(self.role_combo)
 
         # Add User Button
@@ -42,23 +72,15 @@ class UserView(QWidget):
         self.user_list = QListWidget()
         self.layout.addWidget(self.user_list)
 
-        # Delete Button
+        # Delete User Button
         delete_button = QPushButton("Delete Selected User")
         delete_button.clicked.connect(self.delete_user)
         self.layout.addWidget(delete_button)
 
         self.setLayout(self.layout)
-
         self.load_users()
 
-    def set_background_image(self, image_path):
-        palette = QPalette()
-        pixmap = QPixmap(image_path)
-        if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(self.size(), Qt.AspectRatioMode.IgnoreAspectRatio)
-            palette.setBrush(QPalette.ColorRole.Window, QBrush(scaled_pixmap))
-            self.setPalette(palette)
-
+    #Load all current Users
     def load_users(self):
         self.user_list.clear()
         connection = get_db_connection()
@@ -70,6 +92,7 @@ class UserView(QWidget):
         for user in users:
             self.user_list.addItem(f"{user[0]} ({user[1]})")
 
+    #Act Upon Click on Add User
     def add_user(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
@@ -81,20 +104,22 @@ class UserView(QWidget):
 
         try:
             User.add_user(username, password, role)
-            QMessageBox.information(self, "Success", f"User '{username}' added.")
+            QMessageBox.information(self, "Success", f"User '{username}' added as '{role}'.")
             self.load_users()
             self.username_input.clear()
             self.password_input.clear()
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "Error", f"Username '{username}' already exists.")
 
+
+     #Act Upon a click on Delete User
     def delete_user(self):
         selected_item = self.user_list.currentItem()
         if not selected_item:
             QMessageBox.warning(self, "Select User", "Please select a user to delete.")
             return
 
-        username = selected_item.text().split("")[0]
+        username = selected_item.text().split(" (")[0]  # Cleanly extract username
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete user '{username}'?")
 
         if confirm == QMessageBox.StandardButton.Yes:

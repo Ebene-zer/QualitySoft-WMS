@@ -1,5 +1,5 @@
 from database.db_handler import get_db_connection
-
+# The product class
 class Product:
     def __init__(self, product_id, name, price, stock_quantity):
         self.product_id = product_id
@@ -7,6 +7,7 @@ class Product:
         self.price = price
         self.stock_quantity = stock_quantity
 
+#Add products method/function
     @staticmethod
     def add_product(name, price, stock_quantity):
         connection = get_db_connection()
@@ -18,6 +19,7 @@ class Product:
         connection.commit()
         connection.close()
 
+#Update products details method
     @staticmethod
     def update_product(product_id, name, price, stock_quantity):
         connection = get_db_connection()
@@ -30,6 +32,7 @@ class Product:
         connection.commit()
         connection.close()
 
+#Delete products
     @staticmethod
     def delete_product(product_id):
         connection = get_db_connection()
@@ -41,29 +44,35 @@ class Product:
         connection.commit()
         connection.close()
 
+#Get all existing products
     @staticmethod
     def get_all_products():
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT product_id, name, price, stock_quantity FROM products
+            SELECT product_id, name, price, stock_quantity
+            FROM products
         """)
         rows = cursor.fetchall()
         connection.close()
         return [Product(*row) for row in rows]
 
+#Get product using product ID
     @staticmethod
     def get_product_by_id(product_id):
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
-            SELECT product_id, name, price, stock_quantity FROM products
+            SELECT product_id, name, price, stock_quantity 
+            FROM products
             WHERE product_id = ?
         """, (product_id,))
         row = cursor.fetchone()
         connection.close()
         return Product(*row) if row else None
 
+
+#Update stock quantity upon adding/deleting product
     @staticmethod
     def update_stock(product_id, new_quantity, connection=None):
         own_connection = False
@@ -81,3 +90,16 @@ class Product:
         if own_connection:
             connection.commit()
             connection.close()
+
+#Check for low stock quantity
+    @staticmethod
+    def get_products_below_stock(threshold):
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT product_id, name, price, stock_quantity FROM products
+            WHERE stock_quantity <= ?
+        """, (threshold,))
+        rows = cursor.fetchall()
+        connection.close()
+        return [Product(*row) for row in rows]

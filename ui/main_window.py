@@ -1,8 +1,8 @@
+#Import Framework and Library
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QLabel, QFrame
 )
-from PyQt6.QtGui import QPalette, QBrush, QPixmap
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import Qt
 import sys
 
 from ui.product_view import ProductView
@@ -12,47 +12,75 @@ from ui.receipt_view import ReceiptView
 from ui.user_view import UserView
 
 
-
 class MainWindow(QWidget):
     def __init__(self, logged_in_user):
         super().__init__()
         self.logged_in_user = logged_in_user
-        self.setWindowTitle("QUALITYSOFT WHOLESALE MANAGEMENT SYSTEM")
+        self.setWindowTitle("QualitySoft Wholesale Management System")
         self.resize(1000, 700)
-        self.setMinimumSize(800, 500)
+        self.setMinimumSize(600, 400)
 
-        self.set_background_image("bg_images/image1.png")
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #F4F6F7;
+            }
+            QPushButton {
+                padding: 10px 18px;
+                border-radius: 6px;
+                background-color: #2E86C1;
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #21618C;
+            }
+        """)
 
-        # Main Layout
-        main_layout = QHBoxLayout()
+        main_layout = QVBoxLayout()
 
-        # Sidebar Layout
-        sidebar_layout = QVBoxLayout()
-        sidebar_layout.setSpacing(20)
+        # Top Title Bar
+        title_bar = QLabel("QUALITYSOFT WHOLESALE") #To be replaced with the actual Wholesale Name
+        title_bar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_bar.setStyleSheet("font-size: 20px; font-weight: bold; padding: 12px; color: #2C3E50;")
+        main_layout.addWidget(title_bar)
+
+        # Top button bar layout
+        button_bar = QHBoxLayout()
+        button_bar.setSpacing(12)
 
         btn_products = QPushButton("🛒 Products")
         btn_products.clicked.connect(lambda: self.switch_view(0))
-        sidebar_layout.addWidget(btn_products)
+        button_bar.addWidget(btn_products)
 
         btn_customers = QPushButton("👥 Customers")
         btn_customers.clicked.connect(lambda: self.switch_view(1))
-        sidebar_layout.addWidget(btn_customers)
+        button_bar.addWidget(btn_customers)
 
         btn_invoices = QPushButton("🧾 Invoices")
         btn_invoices.clicked.connect(lambda: self.switch_view(2))
-        sidebar_layout.addWidget(btn_invoices)
+        button_bar.addWidget(btn_invoices)
 
         btn_receipts = QPushButton("📄 Receipts")
         btn_receipts.clicked.connect(lambda: self.switch_view(3))
-        sidebar_layout.addWidget(btn_receipts)
+        button_bar.addWidget(btn_receipts)
 
-        # Only show User Management button if admin
         if self.logged_in_user == "admin":
             btn_users = QPushButton("🔐 Users")
             btn_users.clicked.connect(lambda: self.switch_view(4))
-            sidebar_layout.addWidget(btn_users)
+            button_bar.addWidget(btn_users)
 
-        sidebar_layout.addStretch()
+        btn_logout = QPushButton("🚪 Logout")
+        btn_logout.clicked.connect(self.logout)
+        button_bar.addWidget(btn_logout)
+
+        main_layout.addLayout(button_bar)
+
+        # Horizontal separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("color: #ccc;")
+        main_layout.addWidget(separator)
 
         # Central stacked widget
         self.stacked_widget = QStackedWidget()
@@ -60,29 +88,13 @@ class MainWindow(QWidget):
         self.stacked_widget.addWidget(CustomerView())
         self.stacked_widget.addWidget(InvoiceView())
         self.stacked_widget.addWidget(ReceiptView())
-        self.stacked_widget.addWidget(UserView())  # <--- instantiate the UserView correctly
-
-        # Add layouts to main layout
-        main_layout.addLayout(sidebar_layout)
+        self.stacked_widget.addWidget(UserView())
         main_layout.addWidget(self.stacked_widget)
 
         self.setLayout(main_layout)
 
-    def set_background_image(self, image_path):
-        self.bg_pixmap = QPixmap(image_path)
-
-    def resizeEvent(self, event):
-        if hasattr(self, "bg_pixmap") and not self.bg_pixmap.isNull():
-            scaled_pixmap = self.bg_pixmap.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding)
-            palette = QPalette()
-            palette.setBrush(QPalette.ColorRole.Window, QBrush(scaled_pixmap))
-            self.setPalette(palette)
-        super().resizeEvent(event)
-
     def switch_view(self, index):
         self.stacked_widget.setCurrentIndex(index)
-
-        # Refresh relevant view when switched to
         widget = self.stacked_widget.currentWidget()
         if hasattr(widget, "load_customers"):
             widget.load_customers()
@@ -93,9 +105,15 @@ class MainWindow(QWidget):
         if hasattr(widget, "load_users"):
             widget.load_users()
 
+    def logout(self):
+        from ui.login_window import LoginWindow
+        self.login_window = LoginWindow()
+        self.login_window.show()
+        self.close()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow("admin")  # for testing directly from this file
+    window = MainWindow("admin")
     window.show()
     sys.exit(app.exec())

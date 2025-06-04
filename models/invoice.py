@@ -2,7 +2,7 @@ from datetime import datetime
 from database.db_handler import get_db_connection
 from models.product import Product
 
-
+#Invoice Class
 class Invoice:
     def __init__(self, invoice_id, customer_id, invoice_date, discount, tax, total_amount):
         self.invoice_id = invoice_id
@@ -12,14 +12,15 @@ class Invoice:
         self.tax = tax
         self.total_amount = total_amount
 
+#Create Invoice method
     @staticmethod
     def create_invoice(customer_id, items, discount=0.0, tax=0.0):
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        subtotal = sum(item['quantity'] * item['unit_price'] for item in items)
-        total_after_discount = subtotal - discount + tax
-        invoice_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        subtotal = sum(item['quantity'] * item['unit_price'] for item in items) #Calculate Subtotal for each item
+        total_after_discount = subtotal - discount + tax #Imply discount
+        invoice_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #Date
 
         cursor.execute("""
             INSERT INTO invoices (customer_id, invoice_date, discount, tax, total_amount)
@@ -55,6 +56,7 @@ class Invoice:
         connection.close()
         return invoice_id
 
+#Update Invoice
     @staticmethod
     def update_invoice(invoice_id, customer_id, items, discount=0.0, tax=0.0):
         connection = get_db_connection()
@@ -105,6 +107,8 @@ class Invoice:
         connection.commit()
         connection.close()
 
+
+#Delete Invoice
     @staticmethod
     def delete_invoice(invoice_id):
         connection = get_db_connection()
@@ -123,6 +127,8 @@ class Invoice:
         connection.commit()
         connection.close()
 
+
+#Get all Invoice
     @staticmethod
     def get_all_invoices():
         connection = get_db_connection()
@@ -150,6 +156,8 @@ class Invoice:
 
         return invoices
 
+
+#Get Invoice by ID
     @staticmethod
     def get_invoice_by_id(invoice_id):
         connection = get_db_connection()
@@ -194,12 +202,14 @@ class Invoice:
 
         return invoice
 
+#Print Receipt Method
     @staticmethod
     def print_receipt(invoice_id):
         invoice = Invoice.get_invoice_by_id(invoice_id)
         if not invoice:
             raise ValueError(f"Invoice ID {invoice_id} not found.")
 
+#Receipt Details
         print(f"\n--- Invoice #{invoice['invoice_id']} ---")
         print(f"Date: {invoice['invoice_date']}")
         print(f"Customer: {invoice['customer_name']}")
@@ -212,6 +222,7 @@ class Invoice:
         print("-----------------------------\n")
 
 
+#Export receipt to PDF
     @staticmethod
     def export_receipt_to_pdf(invoice_id, output_path):
         from reportlab.lib.pagesizes import A4

@@ -1,5 +1,5 @@
 from database.db_handler import get_db_connection
-
+#Customer Class
 class Customer:
     def __init__(self, customer_id, name, phone_number, address):
         self.customer_id = customer_id
@@ -7,6 +7,7 @@ class Customer:
         self.phone_number = phone_number
         self.address = address
 
+#Add customer method/function
     @staticmethod
     def add_customer(name, phone_number, address):
         connection = get_db_connection()
@@ -18,6 +19,7 @@ class Customer:
         connection.commit()
         connection.close()
 
+#Update existing customer's details
     @staticmethod
     def update_customer(customer_id, name, phone_number, address):
         connection = get_db_connection()
@@ -30,6 +32,7 @@ class Customer:
         connection.commit()
         connection.close()
 
+#Delete a customer
     @staticmethod
     def delete_customer(customer_id):
         connection = get_db_connection()
@@ -41,6 +44,7 @@ class Customer:
         connection.commit()
         connection.close()
 
+#Get all customers
     @staticmethod
     def get_all_customers():
         connection = get_db_connection()
@@ -52,6 +56,7 @@ class Customer:
         connection.close()
         return [Customer(*row) for row in rows]
 
+#Get a customer by ID
     @staticmethod
     def get_customer_by_id(customer_id):
         connection = get_db_connection()
@@ -64,6 +69,7 @@ class Customer:
         connection.close()
         return Customer(*row) if row else None
 
+#Customer's purchase history
     @staticmethod
     def get_customer_purchase_history(customer_id):
         connection = get_db_connection()
