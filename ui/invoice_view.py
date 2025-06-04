@@ -1,39 +1,48 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox,
-    QHBoxLayout, QComboBox, QCompleter
+    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QComboBox, QCompleter
 )
-from PyQt6.QtGui import QPalette, QBrush, QPixmap
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import Qt, QObject, QEvent
 from models.customer import Customer
 from models.product import Product
 from models.invoice import Invoice
 
+
+class SelectAllOnFocus(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.FocusIn:
+            obj.selectAll()
+        return False
+
+
 class InvoiceView(QWidget):
     def __init__(self):
         super().__init__()
-        self.set_background_image("bg_images/image1.png")
-
+        self.setWindowTitle("Invoice View")
+        self.setStyleSheet(self.get_stylesheet())
         self.layout = QVBoxLayout()
 
         # Customer Dropdown
         self.customer_dropdown = QComboBox()
         self.customer_dropdown.setEditable(True)
-        customer_completer = QCompleter()
-        customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.customer_dropdown.setCompleter(customer_completer)
-        self.load_customers()
+        self.customer_completer = QCompleter()
+        self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.customer_dropdown.setCompleter(self.customer_completer)
         self.layout.addWidget(QLabel("Select Customer:"))
         self.layout.addWidget(self.customer_dropdown)
 
         # Product Dropdown
         self.product_dropdown = QComboBox()
         self.product_dropdown.setEditable(True)
-        product_completer = QCompleter()
-        product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.product_dropdown.setCompleter(product_completer)
-        self.load_products()
+        self.product_completer = QCompleter()
+        self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.product_dropdown.setCompleter(self.product_completer)
         self.layout.addWidget(QLabel("Select Product:"))
         self.layout.addWidget(self.product_dropdown)
+
+        # Install select-all-on-focus
+        focus_filter = SelectAllOnFocus()
+        self.customer_dropdown.lineEdit().installEventFilter(focus_filter)
+        self.product_dropdown.lineEdit().installEventFilter(focus_filter)
 
         # Quantity Input
         self.quantity_input = QLineEdit()
@@ -58,7 +67,7 @@ class InvoiceView(QWidget):
         self.tax_input.setPlaceholderText("Tax (GHS)")
         self.layout.addWidget(self.tax_input)
 
-        # Total Display
+        # Total Label
         self.total_label = QLabel("Total: GHS 0.00")
         self.layout.addWidget(self.total_label)
 
@@ -70,38 +79,71 @@ class InvoiceView(QWidget):
         self.setLayout(self.layout)
 
         self.items = []
+        self.load_customers()
+        self.load_products()
 
-    def set_background_image(self, image_path):
-        palette = QPalette()
-        pixmap = QPixmap(image_path)
-        if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(self.size(), Qt.AspectRatioMode.IgnoreAspectRatio)
-            palette.setBrush(QPalette.ColorRole.Window, QBrush(scaled_pixmap))
-            self.setPalette(palette)
+    def get_stylesheet(self):
+        return """
+        QWidget {
+            background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1,
+                        stop:0 #f5f7fa, stop:1 #c3cfe2);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            color: #333333;
+        }
+        QLabel {
+            font-weight: 600;
+            margin: 4px 0;
+        }
+        QLineEdit, QComboBox {
+            background-color: white;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        QLineEdit:focus, QComboBox:focus {
+            border: 2px solid #409EFF;
+        }
+        QPushButton {
+            background-color: #409EFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            margin-top: 8px;
+        }
+        QPushButton:hover {
+            background-color: #66b1ff;
+        }
+        QListWidget {
+            background-color: white;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            padding: 6px;
+            max-height: 120px;
+        }
+        """
 
     def load_customers(self):
         self.customer_dropdown.clear()
         customers = Customer.get_all_customers()
-        customer_names = [f"{c.customer_id} - {c.name}" for c in customers]
-        self.customer_dropdown.addItems(customer_names)
-        self.customer_dropdown.completer().setModel(self.customer_dropdown.model())
-
+        names = [f"{c.customer_id} - {c.name}" for c in customers]
+        self.customer_dropdown.addItems(names)
+        self.customer_completer.setModel(self.customer_dropdown.model())
 
     def load_products(self):
         self.product_dropdown.clear()
         products = Product.get_all_products()
-        product_names = [f"{p.product_id} - {p.name}" for p in products]
-        self.product_dropdown.addItems(product_names)
-        self.product_dropdown.completer().setModel(self.product_dropdown.model())
-
+        names = [f"{p.product_id} - {p.name} (GHS {p.price})" for p in products]
+        self.product_dropdown.addItems(names)
+        self.product_completer.setModel(self.product_dropdown.model())
 
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
             QMessageBox.warning(self, "Input Error", "Select a product.")
             return
-
         try:
-            quantity = int(self.quantity_input.text().strip())
+            quantity = int(self.quantity_input.text())
         except ValueError:
             QMessageBox.warning(self, "Input Error", "Enter a valid quantity.")
             return
@@ -111,7 +153,7 @@ class InvoiceView(QWidget):
         product = Product.get_product_by_id(product_id)
 
         if quantity > product.stock_quantity:
-            QMessageBox.warning(self, "Stock Error", f"Only {product.stock_quantity} units of {product.name} available.")
+            QMessageBox.warning(self, "Stock Error", f"Only {product.stock_quantity} units available.")
             return
 
         self.items.append({
@@ -126,18 +168,14 @@ class InvoiceView(QWidget):
 
     def update_total(self):
         subtotal = sum(item['quantity'] * item['unit_price'] for item in self.items)
-        try:
-            discount = float(self.discount_input.text()) if self.discount_input.text() else 0.0
-            tax = float(self.tax_input.text()) if self.tax_input.text() else 0.0
-        except ValueError:
-            discount, tax = 0.0, 0.0
-
+        discount = float(self.discount_input.text() or 0)
+        tax = float(self.tax_input.text() or 0)
         total = subtotal - discount + tax
         self.total_label.setText(f"Total: GHS {total:.2f}")
 
     def save_invoice(self):
         if not self.items:
-            QMessageBox.warning(self, "Input Error", "Add at least one item to the invoice.")
+            QMessageBox.warning(self, "Input Error", "Add at least one item.")
             return
 
         customer_text = self.customer_dropdown.currentText()
@@ -146,21 +184,12 @@ class InvoiceView(QWidget):
             return
 
         customer_id = int(customer_text.split(" - ")[0])
-
-        try:
-            discount = float(self.discount_input.text()) if self.discount_input.text() else 0.0
-            tax = float(self.tax_input.text()) if self.tax_input.text() else 0.0
-        except ValueError:
-            QMessageBox.warning(self, "Input Error", "Enter valid numbers for discount and tax.")
-            return
-
-        try:
-            invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
-            QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created successfully.")
-            Invoice.print_receipt(invoice_id)
-            self.reset_invoice_form()
-        except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+        discount = float(self.discount_input.text() or 0)
+        tax = float(self.tax_input.text() or 0)
+        invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
+        QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created.")
+        Invoice.print_receipt(invoice_id)
+        self.reset_invoice_form()
 
     def reset_invoice_form(self):
         self.invoice_items_list.clear()

@@ -33,7 +33,7 @@ class User:
         return attempt_hash.hex() == hash_hex
 
     @staticmethod
-    def add_user(username, password, role='user'):
+    def add_user(username, password, role='admin'):
         connection = get_db_connection()
         cursor = connection.cursor()
         password_hash = User.hash_password(password)

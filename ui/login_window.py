@@ -1,47 +1,76 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
-from PyQt6.QtGui import QPalette, QBrush, QPixmap
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QFrame
+from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 from models.user import User
 from ui.main_window import MainWindow
+
 
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Login")
         self.resize(400, 300)
-        self.setMinimumSize(300, 200)
-        self.set_background_image("bg_images/user1.jpeg")
+        self.setMinimumSize(350, 250)
 
-        layout = QVBoxLayout()
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #F2F2F2;
+            }
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QPushButton {
+                padding: 10px;
+                border-radius: 6px;
+                background-color: #2E86C1;
+                color: white;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #21618C;
+            }
+        """)
 
-        title = QLabel("WMS Login")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
+        main_layout = QVBoxLayout()
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        card = QFrame()
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border-radius: 10px;
+                padding: 20px;
+            }
+        """)
+        card_layout = QVBoxLayout()
+
+        title = QLabel("QUALITYSOFT WMS")
+        title.setFont(QFont("Arial", 18, weight=QFont.Weight.Bold))
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title)
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
         self.username_input.returnPressed.connect(self.authenticate)
-        layout.addWidget(self.username_input)
+        card_layout.addWidget(self.username_input)
 
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.returnPressed.connect(self.authenticate)
-        layout.addWidget(self.password_input)
+        card_layout.addWidget(self.password_input)
 
         login_button = QPushButton("Login")
         login_button.clicked.connect(self.authenticate)
-        layout.addWidget(login_button)
+        card_layout.addWidget(login_button)
 
-        self.setLayout(layout)
+        card.setLayout(card_layout)
+        main_layout.addWidget(card)
 
-    def set_background_image(self, image_path):
-        palette = QPalette()
-        pixmap = QPixmap(image_path)
-        if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding)
-            palette.setBrush(QPalette.ColorRole.Window, QBrush(scaled_pixmap))
-            self.setPalette(palette)
+        self.setLayout(main_layout)
 
     def authenticate(self):
         username = self.username_input.text().strip()

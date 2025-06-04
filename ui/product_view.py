@@ -1,14 +1,15 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QHBoxLayout
+    QWidget, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QMessageBox, QLabel, QHBoxLayout
 )
-from PyQt6.QtGui import QPalette, QBrush, QPixmap
-from PyQt6.QtCore import Qt, QSize
 from models.product import Product
+
 
 class ProductView(QWidget):
     def __init__(self):
         super().__init__()
-        self.set_background_image("bg_images/image1.png")
+        self.setWindowTitle("Product Management")
+        self.setStyleSheet(self.get_stylesheet())
+        self.setMinimumSize(600, 400)
 
         self.layout = QVBoxLayout()
 
@@ -34,38 +35,79 @@ class ProductView(QWidget):
         self.product_list = QListWidget()
         self.layout.addWidget(self.product_list)
 
-        # Update / Delete Buttons
+        # Button Layout
         button_layout = QHBoxLayout()
 
+        # Update Product Button
         update_button = QPushButton("Update Selected")
         update_button.clicked.connect(self.update_product)
         button_layout.addWidget(update_button)
 
+        # Delete Product Button
         delete_button = QPushButton("Delete Selected")
         delete_button.clicked.connect(self.delete_product)
         button_layout.addWidget(delete_button)
 
         self.layout.addLayout(button_layout)
-
         self.setLayout(self.layout)
 
         self.load_products()
 
-    def set_background_image(self, image_path):
-        palette = QPalette()
-        pixmap = QPixmap(image_path)
-        if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(self.size(), Qt.AspectRatioMode.IgnoreAspectRatio)
-            palette.setBrush(QPalette.ColorRole.Window, QBrush(scaled_pixmap))
-            self.setPalette(palette)
+    def get_stylesheet(self):
+        return """
+        QWidget {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 #eef2f3, stop:1 #8e9eab);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        QLabel {
+            font-weight: 600;
+            margin: 4px 0;
+        }
+        QLineEdit {
+            background-color: white;
+            border: 1px solid #999;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        QLineEdit:focus {
+            border: 2px solid #2980b9;
+        }
+        QPushButton {
+            background-color: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            margin-top: 8px;
+        }
+        QPushButton:hover {
+            background-color: #3498db;
+        }
+        QListWidget {
+            background-color: white;
+            border: 1px solid #999;
+            border-radius: 6px;
+            padding: 6px;
+            max-height: 200px;
+        }
+        """
+
+    def load_products(self):
+        self.product_list.clear()
+        products = Product.get_all_products()
+        for p in products:
+            self.product_list.addItem(f"{p.product_id} | {p.name} | GHS {p.price:.2f} | {p.stock_quantity}")
 
     def add_product(self):
         name = self.name_input.text().strip()
         try:
-            price = float(self.price_input.text().strip())
-            stock = int(self.stock_input.text().strip())
+            price = float(self.price_input.text())
+            stock = int(self.stock_input.text())
         except ValueError:
-            QMessageBox.warning(self, "Input Error", "Enter valid numbers for price and stock.")
+            QMessageBox.warning(self, "Input Error", "Enter valid price and stock quantity.")
             return
 
         if not name:
@@ -74,16 +116,8 @@ class ProductView(QWidget):
 
         Product.add_product(name, price, stock)
         QMessageBox.information(self, "Success", "Product added.")
+        self.clear_inputs()
         self.load_products()
-        self.name_input.clear()
-        self.price_input.clear()
-        self.stock_input.clear()
-
-    def load_products(self):
-        self.product_list.clear()
-        products = Product.get_all_products()
-        for product in products:
-            self.product_list.addItem(f"{product.product_id}. {product.name} - GHS {product.price} (Stock: {product.stock_quantity})")
 
     def update_product(self):
         selected_item = self.product_list.currentItem()
@@ -92,14 +126,14 @@ class ProductView(QWidget):
             return
 
         product_text = selected_item.text()
-        product_id = int(product_text.split(".")[0])
+        product_id = int(product_text.split(" | ")[0])
 
         name = self.name_input.text().strip()
         try:
-            price = float(self.price_input.text().strip())
-            stock = int(self.stock_input.text().strip())
+            price = float(self.price_input.text())
+            stock = int(self.stock_input.text())
         except ValueError:
-            QMessageBox.warning(self, "Input Error", "Enter valid numbers for price and stock.")
+            QMessageBox.warning(self, "Input Error", "Enter valid price and stock quantity.")
             return
 
         if not name:
@@ -108,19 +142,23 @@ class ProductView(QWidget):
 
         Product.update_product(product_id, name, price, stock)
         QMessageBox.information(self, "Success", "Product updated.")
+        self.clear_inputs()
         self.load_products()
 
     def delete_product(self):
         selected_item = self.product_list.currentItem()
         if not selected_item:
-            QMessageBox.warning(self, "Select Product", "Please select a product to delete.")
+            QMessageBox.warning(self, "No Selection", "Select a product to delete.")
             return
 
-        product_text = selected_item.text()
-        product_id = int(product_text.split(".")[0])
-
+        product_id = int(selected_item.text().split(" | ")[0])
         confirm = QMessageBox.question(self, "Confirm Delete", "Are you sure you want to delete this product?")
         if confirm == QMessageBox.StandardButton.Yes:
             Product.delete_product(product_id)
             QMessageBox.information(self, "Deleted", "Product deleted.")
             self.load_products()
+
+    def clear_inputs(self):
+        self.name_input.clear()
+        self.price_input.clear()
+        self.stock_input.clear()

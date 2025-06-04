@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     if not result:
         User.add_user("admin", "admin123")
-        print("Admin user created (username: admin / password: admin123)")
+       # print("Admin user created (username: admin / password: admin123)")
 
     login = LoginWindow()
     login.show()

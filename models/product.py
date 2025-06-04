@@ -81,3 +81,15 @@ class Product:
         if own_connection:
             connection.commit()
             connection.close()
+
+    @staticmethod
+    def get_products_below_stock(threshold):
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT product_id, name, price, stock_quantity FROM products
+            WHERE stock_quantity <= ?
+        """, (threshold,))
+        rows = cursor.fetchall()
+        connection.close()
+        return [Product(*row) for row in rows]
