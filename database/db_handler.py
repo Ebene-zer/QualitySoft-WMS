@@ -62,7 +62,7 @@ def initialize_database():
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'admin'
+            role TEXT NOT NULL CHECK(role IN ('Admin', 'Manager', 'CEO'))
         )
     """)
 

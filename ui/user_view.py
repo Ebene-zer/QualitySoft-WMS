@@ -59,7 +59,7 @@ class UserView(QWidget):
 
         # Role selection ComboBox
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["Admin", "Manager", "C.E.O"])
+        self.role_combo.addItems(["Admin", "Manager", "CEO"])
         self.role_combo.setEditable(True)  # Enable search/filter
         self.layout.addWidget(self.role_combo)
 

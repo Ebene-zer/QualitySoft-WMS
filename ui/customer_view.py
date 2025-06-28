@@ -1,6 +1,6 @@
 #Import Libraries and Framework
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget,
+    QWidget, QVBoxLayout, QPushButton, QLineEdit, QListWidget,
     QMessageBox, QHBoxLayout
 )
 from models.customer import Customer #Bring the Customer class to use
@@ -106,13 +106,13 @@ class CustomerView(QWidget):
         self.customer_list.clear()
         customers = Customer.get_all_customers()
         for c in customers:
-            self.customer_list.addItem(f"{c.customer_id} - {c.name} | {c.phone} | {c.address}")
+            self.customer_list.addItem(f"{c.customer_id} - {c.name} | {c.phone_number} | {c.address}")
 
 
 # Act upon a click on Add Customer Button
     def add_customer(self):
         name = self.name_input.text().strip()
-        phone = self.phone_input.text().strip()
+        phone_number = self.phone_input.text().strip()
         address = self.address_input.text().strip()
 
         if not name:
@@ -120,7 +120,7 @@ class CustomerView(QWidget):
             return
 
         try:
-            Customer.add_customer(name, phone, address)
+            Customer.add_customer(name, phone_number, address)
             QMessageBox.information(self, "Success", "Customer added.")
             self.load_customers()
             self.clear_inputs()
@@ -136,14 +136,14 @@ class CustomerView(QWidget):
             return
 
         name = self.name_input.text().strip()
-        phone = self.phone_input.text().strip()
+        phone_namber = self.phone_input.text().strip()
         address = self.address_input.text().strip()
 
         if not name:
             QMessageBox.warning(self, "Input Error", "Customer name is required.")
             return
 
-        Customer.update_customer(customer_id, name, phone, address)
+        Customer.update_customer(customer_id, name, phone_number, address)
         QMessageBox.information(self, "Success", "Customer updated.")
         self.load_customers()
         self.clear_inputs()
