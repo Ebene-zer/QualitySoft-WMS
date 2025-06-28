@@ -1,4 +1,3 @@
-#Import Framework and Library
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QComboBox, QCompleter
 )
@@ -14,11 +13,11 @@ class SelectAllOnFocus(QObject):
             obj.selectAll()
         return False
 
-#Invoice View Class
+
 class InvoiceView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Prepare Invoice") #Tab name
+        self.setWindowTitle("Invoice View")
         self.setStyleSheet(self.get_stylesheet())
         self.layout = QVBoxLayout()
 
@@ -61,11 +60,11 @@ class InvoiceView(QWidget):
 
         # Discount and Tax Inputs
         self.discount_input = QLineEdit()
-        self.discount_input.setPlaceholderText("Discount (GH)")
+        self.discount_input.setPlaceholderText("Discount (GHS)")
         self.layout.addWidget(self.discount_input)
 
         self.tax_input = QLineEdit()
-        self.tax_input.setPlaceholderText("Tax (GH)")
+        self.tax_input.setPlaceholderText("Tax (GHS)")
         self.layout.addWidget(self.tax_input)
 
         # Total Label
@@ -83,8 +82,6 @@ class InvoiceView(QWidget):
         self.load_customers()
         self.load_products()
 
-
-#Invoice  View Style
     def get_stylesheet(self):
         return """
         QWidget {
@@ -127,7 +124,6 @@ class InvoiceView(QWidget):
         }
         """
 
-#Load all Customers
     def load_customers(self):
         self.customer_dropdown.clear()
         customers = Customer.get_all_customers()
@@ -135,16 +131,13 @@ class InvoiceView(QWidget):
         self.customer_dropdown.addItems(names)
         self.customer_completer.setModel(self.customer_dropdown.model())
 
-#Load available Products
     def load_products(self):
         self.product_dropdown.clear()
         products = Product.get_all_products()
-        names = [f"{p.product_id} - {p.name} (GH {p.price})" for p in products]
+        names = [f"{p.product_id} - {p.name} (GHS {p.price})" for p in products]
         self.product_dropdown.addItems(names)
         self.product_completer.setModel(self.product_dropdown.model())
 
-
-# Act upon a click on Add to Invoice Button
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
             QMessageBox.warning(self, "Input Error", "Select a product.")
@@ -169,21 +162,17 @@ class InvoiceView(QWidget):
             "unit_price": product.price
         })
 
-        self.invoice_items_list.addItem(f"{product.name} x {quantity} @ GH {product.price}")
+        self.invoice_items_list.addItem(f"{product.name} x {quantity} @ GHS {product.price}")
         self.update_total()
         self.quantity_input.clear()
 
-
-#Update total upon each add
     def update_total(self):
         subtotal = sum(item['quantity'] * item['unit_price'] for item in self.items)
         discount = float(self.discount_input.text() or 0)
         tax = float(self.tax_input.text() or 0)
         total = subtotal - discount + tax
-        self.total_label.setText(f"Total: GH {total:.2f}")
+        self.total_label.setText(f"Total: GHS {total:.2f}")
 
-
-# Act upon a click on Save Invoice Button
     def save_invoice(self):
         if not self.items:
             QMessageBox.warning(self, "Input Error", "Add at least one item.")
@@ -202,8 +191,6 @@ class InvoiceView(QWidget):
         Invoice.print_receipt(invoice_id)
         self.reset_invoice_form()
 
-
-#Take Invoice Form Back to Default State After each Save
     def reset_invoice_form(self):
         self.invoice_items_list.clear()
         self.discount_input.clear()
