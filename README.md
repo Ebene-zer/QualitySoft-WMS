@@ -2,11 +2,13 @@
 # Dev: Ebenezer Fuachie
 1.	Project Overview
 The wholesale Management System is a desktop application designed to streamline wholesale business operations. It allows users to manage products, customers, orders, inventory, and reporting in a user-friendly environment.
-2.	Objectives
+
+3.	Objectives
 •	Provide product, customer and invoice management
 •	Generate useful reports (sales, inventory status)
-•	Maintain records securely and efficiently 
-3.	Core features
+•	Maintain records securely and efficiently
+
+4.	Core features
 3.1	Product Management
 •	Add new products
 •	Edit existing products
@@ -33,7 +35,8 @@ The wholesale Management System is a desktop application designed to streamline 
 3.6	Authentication
 •	Login. Role-based access (e.g., Admin, Manager, Clerk)
 •	Logout
-4.	System Architecture
+
+5.	System Architecture
 NB: Developers guide
 4.1	Technologies Used
 •	Language: Python 3.13.2
@@ -42,7 +45,7 @@ NB: Developers guide
 •	Data storage: SQLite
 •	Architecture Style: Modular (MVC-inspired)
 Also, requirement text file will be included in the project
-5.	Project Structure
+6.	Project Structure
 NB: Developer's guide 
 wholesale_management/
 ├── main.py
@@ -59,10 +62,10 @@ wholesale_management/
  └── docs/
            └── README.md
 NB: This is just an initial structure and there can be improvement
-6.	Testing & Validation
+7.	Testing & Validation
 •	Manual testing for each module
 •	Automated unit tests (later stage)
-7.	Future Enhancements
+8.	Future Enhancements
 •	Export reports to Excel/PDF
 •	SMS notifications on receipt for orders
 •	Cloud sync or remote DB support 
