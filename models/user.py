@@ -47,18 +47,21 @@ class User:
 
     @staticmethod
     def authenticate(username, password):
-        connection = get_db_connection()
-        cursor = connection.cursor()
-        cursor.execute("""
-            SELECT password_hash FROM users WHERE username = ?
-        """, (username,))
-        result = cursor.fetchone()
-        connection.close()
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute("SELECT password_hash, role FROM users WHERE username = ?", (username,))
+            result = cursor.fetchone()
+            connection.close()
 
-        if result:
-            stored_hash = result[0]
-            return User.verify_password(stored_hash, password)
-        return False
+            if result:
+                stored_hash, role = result
+                if User.verify_password(stored_hash, password):
+                    return role  # Return the user's role if authentication succeeds
+            return None  # Return None if failed
+        except Exception as e:
+            print(f"Authentication error: {e}")
+            return None
 
     @staticmethod
     def get_user_role(username):

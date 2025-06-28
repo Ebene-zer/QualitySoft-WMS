@@ -14,6 +14,7 @@ from ui.user_view import UserView
 
 class MainWindow(QWidget):
     def __init__(self, logged_in_user, role):
+        super().__init__()
         self.logged_in_user = logged_in_user
         self.user_role = role
         self.setWindowTitle("QUALITYSOFT WHOLESALE MANAGEMENT SYSTEM")
@@ -46,9 +47,8 @@ class MainWindow(QWidget):
         create_nav_button("📄 Receipts", 3)
 
         if self.user_role.lower() in ["admin", "ceo"]:
-            btn_users = QPushButton("🔐 Users")
-            btn_users.clicked.connect(lambda: self.switch_view(4))
-            button_bar_layout.addWidget(btn_users)
+            create_nav_button("🔐 Users", 4)
+
 
         btn_logout = QPushButton("🚪 Logout")
         btn_logout.setFixedHeight(40)
