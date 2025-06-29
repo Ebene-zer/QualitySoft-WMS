@@ -57,11 +57,13 @@ class UserView(QWidget):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.layout.addWidget(self.password_input)
 
-        # Role selection ComboBox
+        role_layout = QVBoxLayout()
+        role_label = QLabel("Access Level:")
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["Admin", "Manager", "CEO"])
-        self.role_combo.setEditable(True)  # Enable search/filter
-        self.layout.addWidget(self.role_combo)
+        self.role_combo.addItems(["Manager", "CEO", "Admin"])
+        role_layout.addWidget(role_label)
+        role_layout.addWidget(self.role_combo)
+        self.layout.addLayout(role_layout)
 
         # Add User Button
         add_button = QPushButton("Add User")

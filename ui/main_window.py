@@ -117,6 +117,8 @@ class MainWindow(QWidget):
             widget.load_products()
         if hasattr(widget, "load_invoice_ids"):
             widget.load_invoice_ids()
+        if hasattr(widget, "load_invoices"):
+            widget.load_invoices()
         if hasattr(widget, "load_users"):
             widget.load_users()
 
@@ -136,6 +138,6 @@ class MainWindow(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow("admin")  # for testing
+    window = MainWindow("admin", "Admin")
     window.show()
     sys.exit(app.exec())

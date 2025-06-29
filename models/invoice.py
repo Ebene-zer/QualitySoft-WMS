@@ -133,31 +133,25 @@ class Invoice:
     def get_all_invoices():
         connection = get_db_connection()
         cursor = connection.cursor()
-
         cursor.execute("""
-            SELECT i.invoice_id, c.name, i.invoice_date, i.discount, i.tax, i.total_amount
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.customer_id
-            ORDER BY i.invoice_date DESC
+            SELECT invoices.invoice_id, customers.name, invoices.total_amount
+            FROM invoices
+            JOIN customers ON invoices.customer_id = customers.customer_id
         """)
         rows = cursor.fetchall()
         connection.close()
 
+        # Return list of simple objects or namedtuples for attribute access
         invoices = []
         for row in rows:
-            invoices.append({
-                "invoice_id": row[0],
-                "customer_name": row[1],
-                "invoice_date": row[2],
-                "discount": row[3],
-                "tax": row[4],
-                "total_amount": row[5]
-            })
-
+            invoice = type('InvoiceRecord', (object,), {})()
+            invoice.invoice_id = row[0]
+            invoice.customer_name = row[1]
+            invoice.total = row[2]
+            invoices.append(invoice)
         return invoices
 
-
-#Get Invoice by ID
+    #Get Invoice by ID
     @staticmethod
     def get_invoice_by_id(invoice_id):
         connection = get_db_connection()

@@ -88,6 +88,10 @@ class LoginWindow(QWidget):
 
         role = User.authenticate(username, password)
         if role:
+            if role != selected_role:
+                QMessageBox.warning(self, "Access Denied", f"This account belongs to a {role}, not {selected_role}.")
+                return
+
             self.main_window = MainWindow(username, role)
             self.main_window.show()
             self.close()

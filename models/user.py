@@ -55,10 +55,10 @@ class User:
             connection.close()
 
             if result:
-                stored_hash, role = result
+                stored_hash, stored_role = result
                 if User.verify_password(stored_hash, password):
-                    return role  # Return the user's role if authentication succeeds
-            return None  # Return None if failed
+                    return stored_role  # Return role if authentication succeeds
+            return None  # Authentication failed
         except Exception as e:
             print(f"Authentication error: {e}")
             return None

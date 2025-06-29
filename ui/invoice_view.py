@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QComboBox, QCompleter
+    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox,
+    QComboBox, QCompleter
 )
 from PyQt6.QtCore import Qt, QObject, QEvent
 from models.customer import Customer
@@ -21,12 +22,15 @@ class InvoiceView(QWidget):
         self.setStyleSheet(self.get_stylesheet())
         self.layout = QVBoxLayout()
 
+        focus_filter = SelectAllOnFocus()
+
         # Customer Dropdown
         self.customer_dropdown = QComboBox()
         self.customer_dropdown.setEditable(True)
         self.customer_completer = QCompleter()
         self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.customer_dropdown.setCompleter(self.customer_completer)
+        self.customer_dropdown.lineEdit().installEventFilter(focus_filter)
         self.layout.addWidget(QLabel("Select Customer:"))
         self.layout.addWidget(self.customer_dropdown)
 
@@ -36,13 +40,9 @@ class InvoiceView(QWidget):
         self.product_completer = QCompleter()
         self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.product_dropdown.setCompleter(self.product_completer)
+        self.product_dropdown.lineEdit().installEventFilter(focus_filter)
         self.layout.addWidget(QLabel("Select Product:"))
         self.layout.addWidget(self.product_dropdown)
-
-        # Install select-all-on-focus
-        focus_filter = SelectAllOnFocus()
-        self.customer_dropdown.lineEdit().installEventFilter(focus_filter)
-        self.product_dropdown.lineEdit().installEventFilter(focus_filter)
 
         # Quantity Input
         self.quantity_input = QLineEdit()
@@ -72,7 +72,7 @@ class InvoiceView(QWidget):
         self.layout.addWidget(self.total_label)
 
         # Save Invoice Button
-        save_invoice_button = QPushButton("Save Invoice")
+        save_invoice_button = QPushButton("💾 Save Invoice")
         save_invoice_button.clicked.connect(self.save_invoice)
         self.layout.addWidget(save_invoice_button)
 
@@ -85,11 +85,10 @@ class InvoiceView(QWidget):
     def get_stylesheet(self):
         return """
         QWidget {
-            background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1,
-                        stop:0 #f5f7fa, stop:1 #c3cfe2);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', sans-serif;
             font-size: 14px;
-            color: #333333;
+            color: #333;
         }
         QLabel {
             font-weight: 600;
@@ -97,30 +96,30 @@ class InvoiceView(QWidget):
         }
         QLineEdit, QComboBox {
             background-color: white;
-            border: 1px solid #aaa;
+            border: 1px solid #ccc;
             border-radius: 6px;
-            padding: 6px;
+            padding: 7px;
         }
         QLineEdit:focus, QComboBox:focus {
-            border: 2px solid #409EFF;
+            border: 2px solid #3498db;
         }
         QPushButton {
-            background-color: #409EFF;
+            background-color: #3498db;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             padding: 8px 16px;
             margin-top: 8px;
         }
         QPushButton:hover {
-            background-color: #66b1ff;
+            background-color: #2980b9;
         }
         QListWidget {
             background-color: white;
-            border: 1px solid #aaa;
+            border: 1px solid #ccc;
             border-radius: 6px;
             padding: 6px;
-            max-height: 120px;
+            max-height: 140px;
         }
         """
 
@@ -188,7 +187,6 @@ class InvoiceView(QWidget):
         tax = float(self.tax_input.text() or 0)
         invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
         QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created.")
-        Invoice.print_receipt(invoice_id)
         self.reset_invoice_form()
 
     def reset_invoice_form(self):
