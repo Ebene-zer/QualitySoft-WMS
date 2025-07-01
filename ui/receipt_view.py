@@ -1,10 +1,19 @@
+
+import os
+import tempfile
+import webbrowser
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QListWidget, QPushButton, QMessageBox, QComboBox, QCompleter
+    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
+    QPushButton, QMessageBox, QComboBox, QCompleter, QFileDialog
 )
-from PyQt6.QtGui import QPainter, QFont
-from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 from PyQt6.QtCore import Qt, QObject, QEvent
 from models.invoice import Invoice
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import mm
 
 
 class SelectAllOnFocus(QObject):
@@ -12,7 +21,6 @@ class SelectAllOnFocus(QObject):
         if event.type() == QEvent.Type.FocusIn:
             obj.selectAll()
         return False
-
 
 class ReceiptView(QWidget):
     def __init__(self):
@@ -23,7 +31,6 @@ class ReceiptView(QWidget):
 
         focus_filter = SelectAllOnFocus()
 
-        # Invoice Dropdown
         self.invoice_dropdown = QComboBox()
         self.invoice_dropdown.setEditable(True)
         self.invoice_completer = QCompleter()
@@ -33,21 +40,19 @@ class ReceiptView(QWidget):
         self.layout.addWidget(QLabel("Select Invoice:"))
         self.layout.addWidget(self.invoice_dropdown)
 
-        # Show button
         self.show_receipt_button = QPushButton("📑 Load Receipt")
         self.show_receipt_button.clicked.connect(self.show_receipt)
         self.layout.addWidget(self.show_receipt_button)
 
-        # Receipt List
-        self.receipt_list = QListWidget()
-        self.layout.addWidget(self.receipt_list)
+        self.receipt_table = QTableWidget()
+        self.receipt_table.setColumnCount(4)
+        self.receipt_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Total"])
+        self.layout.addWidget(self.receipt_table)
 
-        # Export to PDF button
         self.export_pdf_button = QPushButton("📄 Export to PDF")
         self.export_pdf_button.clicked.connect(self.export_to_pdf)
         self.layout.addWidget(self.export_pdf_button)
 
-        # Print button
         self.print_button = QPushButton("🖨️ Print Receipt")
         self.print_button.clicked.connect(self.print_receipt)
         self.layout.addWidget(self.print_button)
@@ -87,7 +92,7 @@ class ReceiptView(QWidget):
         QPushButton:hover {
             background-color: #2980b9;
         }
-        QListWidget {
+        QTableWidget {
             background-color: white;
             border: 1px solid #ccc;
             border-radius: 6px;
@@ -99,11 +104,12 @@ class ReceiptView(QWidget):
     def load_invoices(self):
         self.invoice_dropdown.clear()
         invoices = Invoice.get_all_invoices()
-        invoice_strs = [f"{inv['invoice_id']} - {inv['customer_name']} - GHS {inv['total_amount']:.2f}" for inv in invoices]
+        invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GHS {inv.total_amount:.2f}" for inv in invoices]
         self.invoice_dropdown.addItems(invoice_strs)
         self.invoice_completer.setModel(self.invoice_dropdown.model())
 
     def show_receipt(self):
+        self.receipt_table.setRowCount(0)
         if self.invoice_dropdown.currentIndex() == -1:
             QMessageBox.warning(self, "Input Error", "Select an invoice first.")
             return
@@ -116,90 +122,216 @@ class ReceiptView(QWidget):
             QMessageBox.warning(self, "Load Error", "Invoice not found.")
             return
 
-        self.receipt_list.clear()
-
-        # Header
-        self.receipt_list.addItem(f"Invoice ID: {invoice['invoice_id']}")
-        self.receipt_list.addItem(f"Date: {invoice['invoice_date']}")
-        self.receipt_list.addItem(f"Customer: {invoice['customer_name']}")
-        self.receipt_list.addItem(f"Discount: GHS {invoice['discount']:.2f}")
-        self.receipt_list.addItem(f"Tax: GHS {invoice['tax']:.2f}")
-        self.receipt_list.addItem(f"Total: GHS {invoice['total_amount']:.2f}")
-        self.receipt_list.addItem("")
-
-        # Items
         for item in invoice["items"]:
-            line = f"{item['product_name']} x {item['quantity']} @ GHS {item['unit_price']:.2f}"
-            self.receipt_list.addItem(line)
+            row = self.receipt_table.rowCount()
+            self.receipt_table.insertRow(row)
+            self.receipt_table.setItem(row, 0, QTableWidgetItem(item['product_name']))
+            self.receipt_table.setItem(row, 1, QTableWidgetItem(str(item['quantity'])))
+            self.receipt_table.setItem(row, 2, QTableWidgetItem(f"GHS {item['unit_price']:.2f}"))
+            total = item['quantity'] * item['unit_price']
+            self.receipt_table.setItem(row, 3, QTableWidgetItem(f"GHS {total:.2f}"))
+
+
 
     def export_to_pdf(self):
-        if self.receipt_list.count() == 0:
+
+        if self.invoice_dropdown.currentIndex() == -1:
             QMessageBox.warning(self, "Export Error", "Please load a receipt first.")
             return
 
-        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-        printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
         invoice_text = self.invoice_dropdown.currentText()
-        invoice_id = invoice_text.split(" - ")[0]
-        printer.setOutputFileName(f"receipt_{invoice_id}.pdf")
+        invoice_id = int(invoice_text.split(" - ")[0])
+        default_filename = f"receipt_{invoice_id}.pdf"
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Receipt as PDF", default_filename, "PDF Files (*.pdf)")
 
-        painter = QPainter(printer)
-        painter.setFont(QFont("Arial", 11))
-        margin = 50
-        y = margin
+        if not file_path:
+            return
 
-        painter.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        painter.drawText(margin, y, "Wholesale Management System Receipt")
-        y += 30
-        painter.setFont(QFont("Arial", 11))
-        painter.drawText(margin, y, f"Invoice: {invoice_text}")
-        y += 25
-        painter.drawLine(margin, y, printer.pageRect().width() - margin, y)
-        y += 20
+        invoice = Invoice.get_invoice_by_id(invoice_id)
+        if not invoice:
+            QMessageBox.warning(self, "Export Error", "Invoice not found.")
+            return
 
-        for i in range(self.receipt_list.count()):
-            line_text = self.receipt_list.item(i).text()
-            painter.drawText(margin, y, line_text)
-            y += 20
-            if y > printer.pageRect().height() - margin:
-                printer.newPage()
-                y = margin
+        # Prepare data
+        invoice_number = invoice.get("invoice_id", "")
+        invoice_date = invoice.get("date", "")
+        customer_name = invoice.get("customer_name", "")
+        items = [
+            [
+                item["product_name"],
+                str(item["quantity"]),
+                f"{item['unit_price']:.2f}",
+                f"{item['quantity'] * item['unit_price']:.2f}"
+            ]
+            for item in invoice["items"]
+        ]
+        discount = f"{invoice.get('discount', 0):.2f}"
+        tax = f"{invoice.get('tax', 0):.2f}"
+        total = f"{invoice.get('total_amount', 0):.2f}"
 
-        painter.end()
-        QMessageBox.information(self, "Export Complete", f"Receipt saved as receipt_{invoice_id}.pdf")
+        # Create PDF
+        doc = SimpleDocTemplate(file_path, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        styles = getSampleStyleSheet()
+        elements = []
+
+        # Title
+        title_style = ParagraphStyle(
+            name="Title",
+            parent=styles["Title"],
+            alignment=1,  # Center
+            fontSize=18,
+            leading=22,
+            spaceAfter=10,
+            fontName="Helvetica-Bold"
+        )
+        elements.append(Paragraph("Wholesale Management System", title_style))
+
+        # Invoice details
+        elements.append(Paragraph(f"Invoice Number: {invoice_number}", styles["Normal"]))
+        elements.append(Paragraph(f"Date: {invoice_date}", styles["Normal"]))
+        elements.append(Spacer(1, 8))
+
+        # Customer name
+        elements.append(Paragraph(f"Customer Name: {customer_name}", styles["Normal"]))
+        elements.append(Spacer(1, 12))
+
+        # Table data
+        table_data = [
+            ["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]
+        ] + items
+
+        table = Table(table_data, colWidths=[60*mm, 30*mm, 40*mm, 40*mm])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightblue),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+            ("TOPPADDING", (0, 0), (-1, 0), 8),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+            ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 16))
+
+        # Summary
+        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=250)
+        elements.append(Paragraph(f"Discount: GHS {discount}", summary_style))
+        elements.append(Paragraph(f"Tax: GHS {tax}", summary_style))
+        elements.append(Paragraph(f"Total: GHS {total}", summary_style))
+        elements.append(Spacer(1, 30))
+
+
+        # Footer
+        footer_style = ParagraphStyle(
+            name="Footer",
+            parent=styles["Normal"],
+            alignment=1,  # Center
+            fontSize=11,
+            textColor=colors.grey,
+            spaceBefore=40
+        )
+        elements.append(Spacer(1, 60))
+        elements.append(Paragraph("Thank you for doing business with us!", footer_style))
+
+        doc.build(elements)
+        QMessageBox.information(self, "Export Complete", f"Receipt saved as {file_path}")
+
+
+
+
 
     def print_receipt(self):
-        if self.receipt_list.count() == 0:
+        # Generate a temp PDF and open it for printing
+        if self.invoice_dropdown.currentIndex() == -1:
             QMessageBox.warning(self, "Print Error", "Please load a receipt first.")
             return
 
-        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-        preview = QPrintPreviewDialog(printer)
-        preview.paintRequested.connect(self.handle_paint_request)
-        preview.exec()
-
-    def handle_paint_request(self, printer):
-        painter = QPainter(printer)
-        painter.setFont(QFont("Arial", 11))
-        margin = 50
-        y = margin
-
-        painter.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        painter.drawText(margin, y, "Wholesale Management System Receipt")
-        y += 30
-        painter.setFont(QFont("Arial", 11))
         invoice_text = self.invoice_dropdown.currentText()
-        painter.drawText(margin, y, f"Invoice: {invoice_text}")
-        y += 25
-        painter.drawLine(margin, y, printer.pageRect().width() - margin, y)
-        y += 20
+        invoice_id = int(invoice_text.split(" - ")[0])
+        invoice = Invoice.get_invoice_by_id(invoice_id)
+        if not invoice:
+            QMessageBox.warning(self, "Print Error", "Invoice not found.")
+            return
 
-        for i in range(self.receipt_list.count()):
-            line_text = self.receipt_list.item(i).text()
-            painter.drawText(margin, y, line_text)
-            y += 20
-            if y > printer.pageRect().height() - margin:
-                printer.newPage()
-                y = margin
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp_path = tmp.name
+        self.export_to_pdf_reportlab_custom_path(invoice, tmp_path)
+        webbrowser.open(tmp_path)
 
-        painter.end()
+    def export_to_pdf_custom_path(self, invoice, file_path):
+
+        invoice_number = invoice.get("invoice_id", "")
+        invoice_date = invoice.get("date", "")
+        customer_name = invoice.get("customer_name", "")
+        items = [
+            [
+                item["product_name"],
+                str(item["quantity"]),
+                f"{item['unit_price']:.2f}",
+                f"{item['quantity'] * item['unit_price']:.2f}"
+            ]
+            for item in invoice["items"]
+        ]
+        discount = f"{invoice.get('discount', 0):.2f}"
+        tax = f"{invoice.get('tax', 0):.2f}"
+        total = f"{invoice.get('total_amount', 0):.2f}"
+
+        doc = SimpleDocTemplate(file_path, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        styles = getSampleStyleSheet()
+        elements = []
+
+        title_style = ParagraphStyle(
+            name="Title",
+            parent=styles["Title"],
+            alignment=1,
+            fontSize=18,
+            leading=22,
+            spaceAfter=10,
+            fontName="Helvetica-Bold"
+        )
+        elements.append(Paragraph("Wholesale Management System", title_style))
+        elements.append(Paragraph(f"Invoice Number: {invoice_number}", styles["Normal"]))
+        elements.append(Paragraph(f"Date: {invoice_date}", styles["Normal"]))
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"Customer Name: {customer_name}", styles["Normal"]))
+        elements.append(Spacer(1, 12))
+
+        table_data = [
+            ["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]
+        ] + items
+
+        table = Table(table_data, colWidths=[60*mm, 30*mm, 40*mm, 40*mm])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightblue),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+            ("TOPPADDING", (0, 0), (-1, 0), 8),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+            ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 16))
+
+        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=250)
+        elements.append(Paragraph(f"Discount: GHS {discount}", summary_style))
+        elements.append(Paragraph(f"Tax: GHS {tax}", summary_style))
+        elements.append(Paragraph(f"Total: GHS {total}", summary_style))
+        elements.append(Spacer(1, 30))
+
+        footer_style = ParagraphStyle(
+            name="Footer",
+            parent=styles["Normal"],
+            alignment=1,
+            fontSize=11,
+            textColor=colors.grey,
+            spaceBefore=40
+        )
+        elements.append(Spacer(1, 60))
+        elements.append(Paragraph("Thank you for doing business with us!", footer_style))
+
+        doc.build(elements)

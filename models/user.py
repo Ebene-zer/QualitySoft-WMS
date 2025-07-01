@@ -31,17 +31,23 @@ class User:
 
     @staticmethod
     def add_user(username, password, role):
+        from database.db_handler import get_db_connection
+        import sqlite3
+
         connection = get_db_connection()
         cursor = connection.cursor()
-        password_hash = User.hash_password(password)
+
+        password_hash = User.hash_password(password)  # Use the correct hashing method
+
         try:
             cursor.execute("""
                 INSERT INTO users (username, password_hash, role)
                 VALUES (?, ?, ?)
             """, (username, password_hash, role))
             connection.commit()
-        except Exception as e:
-            print(f"Error adding user: {e}")
+        except sqlite3.IntegrityError as e:
+            connection.rollback()
+            raise e
         finally:
             connection.close()
 

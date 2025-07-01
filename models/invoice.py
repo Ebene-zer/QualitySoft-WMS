@@ -147,7 +147,7 @@ class Invoice:
             invoice = type('InvoiceRecord', (object,), {})()
             invoice.invoice_id = row[0]
             invoice.customer_name = row[1]
-            invoice.total = row[2]
+            invoice.total_amount = row[2]
             invoices.append(invoice)
         return invoices
 
