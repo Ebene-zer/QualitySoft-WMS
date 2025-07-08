@@ -1,7 +1,6 @@
 #Import Libraries and Framework
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QListWidget,
-    QMessageBox, QHBoxLayout
+    QWidget, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
 )
 from models.customer import Customer #Bring the Customer class to use
 
@@ -36,9 +35,14 @@ class CustomerView(QWidget):
         add_button.clicked.connect(self.add_customer)
         self.layout.addWidget(add_button)
 
-        # Customer List
-        self.customer_list = QListWidget()
-        self.layout.addWidget(self.customer_list)
+        # Customer Table
+        self.customer_table = QTableWidget()
+        self.customer_table.setColumnCount(4)
+        self.customer_table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Address"])
+        self.customer_table.setSelectionBehavior(self.customer_table.SelectionBehavior.SelectRows)
+        self.customer_table.setEditTriggers(self.customer_table.EditTrigger.NoEditTriggers)
+        self.customer_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
+        self.layout.addWidget(self.customer_table)
 
         # Set Button Layout
         button_layout = QHBoxLayout()
@@ -92,7 +96,7 @@ class CustomerView(QWidget):
         QPushButton:hover {
             background-color: #3498db;
         }
-        QListWidget {
+        QTableWidget {
             background-color: white;
             border: 1px solid #999;
             border-radius: 6px;
@@ -103,10 +107,14 @@ class CustomerView(QWidget):
 
     #Load added customers
     def load_customers(self):
-        self.customer_list.clear()
+        self.customer_table.setRowCount(0)
         customers = Customer.get_all_customers()
-        for c in customers:
-            self.customer_list.addItem(f"{c.customer_id} - {c.name} | {c.phone_number} | {c.address}")
+        for row_idx, customer in enumerate(customers):
+            self.customer_table.insertRow(row_idx)
+            self.customer_table.setItem(row_idx, 0, QTableWidgetItem(str(customer.customer_id)))
+            self.customer_table.setItem(row_idx, 1, QTableWidgetItem(customer.name))
+            self.customer_table.setItem(row_idx, 2, QTableWidgetItem(customer.phone_number))
+            self.customer_table.setItem(row_idx, 3, QTableWidgetItem(customer.address))
 
 
     # Act upon a click on Add Customer Button
@@ -168,20 +176,22 @@ class CustomerView(QWidget):
 
 
     def get_selected_customer_id(self):
-        selected = self.customer_list.currentItem()
-        if not selected:
+        selected = self.customer_table.currentRow()
+        if selected == -1:
             return None
-        text = selected.text()
-        parts = text.split(" - ")
-        if len(parts) < 2:
-            return None
-        try:
-            return int(parts[0])
-        except ValueError:
-            return None
+        return int(self.customer_table.item(selected, 0).text())
 
    #Clear Input after usage
     def clear_inputs(self):
         self.name_input.clear()
         self.phone_input.clear()
         self.address_input.clear()
+
+    def populate_fields_from_selection(self):
+        selected = self.customer_table.currentRow()
+        if selected == -1:
+            self.clear_inputs()
+            return
+        self.name_input.setText(self.customer_table.item(selected, 1).text())
+        self.phone_input.setText(self.customer_table.item(selected, 2).text())
+        self.address_input.setText(self.customer_table.item(selected, 3).text())

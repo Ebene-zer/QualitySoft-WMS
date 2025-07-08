@@ -1,6 +1,6 @@
 #Import the necessary libraries/frameworks
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QMessageBox, QHBoxLayout
+    QWidget, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
 )
 
 from database.db_handler import get_db_connection
@@ -36,9 +36,14 @@ class ProductView(QWidget):
         add_button.clicked.connect(self.add_product)
         self.layout.addWidget(add_button)
 
-        # Product List
-        self.product_list = QListWidget()
-        self.layout.addWidget(self.product_list)
+        # Product Table (replaces product_list)
+        self.product_table = QTableWidget()
+        self.product_table.setColumnCount(4)
+        self.product_table.setHorizontalHeaderLabels(["ID", "Name", "Price", "Stock"])
+        self.product_table.setSelectionBehavior(self.product_table.SelectionBehavior.SelectRows)
+        self.product_table.setEditTriggers(self.product_table.EditTrigger.NoEditTriggers)
+        self.product_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
+        self.layout.addWidget(self.product_table)
 
         #Set Button Layout
         button_layout = QHBoxLayout()
@@ -57,6 +62,7 @@ class ProductView(QWidget):
         self.setLayout(self.layout)
 
         self.load_products()
+        self.show_low_stock_alert()
 
 #Product View Style
     def get_stylesheet(self):
@@ -92,7 +98,7 @@ class ProductView(QWidget):
         QPushButton:hover {
             background-color: #3498db;
         }
-        QListWidget {
+        QTableWidget {
             background-color: white;
             border: 1px solid #999;
             border-radius: 6px;
@@ -103,10 +109,14 @@ class ProductView(QWidget):
 
     #Load Products Method
     def load_products(self):
-        self.product_list.clear()
+        self.product_table.setRowCount(0)
         products = Product.get_all_products()
-        for p in products:
-            self.product_list.addItem(f"{p.product_id} | {p.name} | GHS {p.price:.2f} | {p.stock_quantity}")
+        for row_idx, product in enumerate(products):
+            self.product_table.insertRow(row_idx)
+            self.product_table.setItem(row_idx, 0, QTableWidgetItem(str(product.product_id)))
+            self.product_table.setItem(row_idx, 1, QTableWidgetItem(product.name))
+            self.product_table.setItem(row_idx, 2, QTableWidgetItem(str(product.price)))
+            self.product_table.setItem(row_idx, 3, QTableWidgetItem(str(product.stock_quantity)))
 
     #Act upon a click on Add Product Button
     def add_product(self):
@@ -127,39 +137,18 @@ class ProductView(QWidget):
         QMessageBox.information(self, "Success", "Product added.")
         self.clear_inputs()
         self.load_products()
+        self.show_low_stock_alert()
 
-    # Populate fields with product details for editing
-    # def populate_product_fields(self, item):
-    #     # Defensive: Ensure item has expected format
-    #     text = item.text()
-    #     if " (" not in text:
-    #         QMessageBox.warning(self, "Error", "Selected item format is invalid.")
-    #         return
-    #     name = text.split(" (" )[0]
-    #     connection = get_db_connection()
-    #     cursor = connection.cursor()
-    #     cursor.execute("SELECT name, price, stock)quantity FROM products WHERE username = ?", (name,))
-    #     product = cursor.fetchone()
-    #     connection.close()
-    #     if product:
-    #         self.name_input.setText(product[0])
-    #         self.price_input.setText(product[1])
-    #         self.stock_input.setText(product[2])
-    #     else:
-    #         QMessageBox.warning(self, "Error", f"User '{name}' not found in database.")
 
 
 
     #Act upon a click on Update Product
     def update_product(self):
-        selected_item = self.product_list.currentItem()
-        if not selected_item:
+        selected = self.product_table.currentRow()
+        if selected == -1:
             QMessageBox.warning(self, "Select Product", "Please select a product to update.")
             return
-
-        product_text = selected_item.text()
-        product_id = int(product_text.split(" | ")[0])
-
+        product_id = int(self.product_table.item(selected, 0).text())
         name = self.name_input.text().strip()
         try:
             price = float(self.price_input.text())
@@ -167,12 +156,6 @@ class ProductView(QWidget):
         except ValueError:
             QMessageBox.warning(self, "Input Error", "Enter valid price and stock quantity.")
             return
-
-        if not name:
-            QMessageBox.warning(self, "Input Error", "Product name cannot be empty.")
-            return
-
-        #Call update_product from Product Class and Pass values
         Product.update_product(product_id, name, price, stock)
         QMessageBox.information(self, "Success", "Product updated.")
         self.clear_inputs()
@@ -181,20 +164,33 @@ class ProductView(QWidget):
 
     # Act upon a click on Delete product
     def delete_product(self):
-        selected_item = self.product_list.currentItem()
-        if not selected_item:
-            QMessageBox.warning(self, "No Selection", "Select a product to delete.")
+        selected = self.product_table.currentRow()
+        if selected == -1:
+            QMessageBox.warning(self, "Select Product", "Please select a product to delete.")
             return
-
-        product_id = int(selected_item.text().split(" | ")[0])
-        confirm = QMessageBox.question(self, "Confirm Delete", "Are you sure you want to delete this product?")
-        if confirm == QMessageBox.StandardButton.Yes:
-            Product.delete_product(product_id)
-            QMessageBox.information(self, "Deleted", "Product deleted.")
-            self.load_products()
+        product_id = int(self.product_table.item(selected, 0).text())
+        Product.delete_product(product_id)
+        QMessageBox.information(self, "Success", "Product deleted.")
+        self.clear_inputs()
+        self.load_products()
 
 #Clear Input Fields
     def clear_inputs(self):
         self.name_input.clear()
         self.price_input.clear()
         self.stock_input.clear()
+
+    def populate_fields_from_selection(self):
+        selected = self.product_table.currentRow()
+        if selected == -1:
+            self.clear_inputs()
+            return
+        self.name_input.setText(self.product_table.item(selected, 1).text())
+        self.price_input.setText(self.product_table.item(selected, 2).text())
+        self.stock_input.setText(self.product_table.item(selected, 3).text())
+
+    def show_low_stock_alert(self):
+        low_stock_products = Product.get_products_below_stock(10)
+        if low_stock_products:
+            product_names = ", ".join([f"{p.name} (Stock: {p.stock_quantity})" for p in low_stock_products])
+            QMessageBox.warning(self, "Low Stock Alert", f"The following products have low stock (<=10):\n{product_names}")

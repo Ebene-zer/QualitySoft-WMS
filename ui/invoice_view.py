@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox,
-    QComboBox, QCompleter
+    QComboBox, QCompleter, QTableWidget, QTableWidgetItem, QHBoxLayout
 )
 from PyQt6.QtCore import Qt, QObject, QEvent
 from models.customer import Customer
@@ -52,14 +52,27 @@ class InvoiceView(QWidget):
         # Enter key support
         self.quantity_input.returnPressed.connect(self.add_item_to_invoice)
 
-        # Add Item Button
+        # Add Item, Update, and Delete Buttons
+        button_layout = QHBoxLayout()
         add_item_button = QPushButton("Add to Invoice")
         add_item_button.clicked.connect(self.add_item_to_invoice)
-        self.layout.addWidget(add_item_button)
+        button_layout.addWidget(add_item_button)
+        update_item_button = QPushButton("Update Selected")
+        update_item_button.clicked.connect(self.update_selected_item)
+        button_layout.addWidget(update_item_button)
+        delete_item_button = QPushButton("Delete Selected")
+        delete_item_button.clicked.connect(self.delete_selected_item)
+        button_layout.addWidget(delete_item_button)
+        self.layout.addLayout(button_layout)
 
-        # Invoice Items List
-        self.invoice_items_list = QListWidget()
-        self.layout.addWidget(self.invoice_items_list)
+        # Invoice Items Table (replaces invoice_items_list)
+        self.invoice_items_table = QTableWidget()
+        self.invoice_items_table.setColumnCount(4)
+        self.invoice_items_table.setHorizontalHeaderLabels(["Product", "Quantity", "Unit Price", "Total"])
+        self.invoice_items_table.setSelectionBehavior(self.invoice_items_table.SelectionBehavior.SelectRows)
+        self.invoice_items_table.setEditTriggers(self.invoice_items_table.EditTrigger.NoEditTriggers)
+        self.invoice_items_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
+        self.layout.addWidget(self.invoice_items_table)
 
         # Discount and Tax Inputs
         self.discount_input = QLineEdit()
@@ -84,6 +97,7 @@ class InvoiceView(QWidget):
         self.items = []
         self.load_customers()
         self.load_products()
+        self.load_invoice_items_table()
 
     def get_stylesheet(self):
         return """
@@ -140,6 +154,15 @@ class InvoiceView(QWidget):
         self.product_dropdown.addItems(names)
         self.product_completer.setModel(self.product_dropdown.model())
 
+    def load_invoice_items_table(self):
+        self.invoice_items_table.setRowCount(0)
+        for row_idx, item in enumerate(self.items):
+            self.invoice_items_table.insertRow(row_idx)
+            self.invoice_items_table.setItem(row_idx, 0, QTableWidgetItem(item['product_name']))
+            self.invoice_items_table.setItem(row_idx, 1, QTableWidgetItem(str(item['quantity'])))
+            self.invoice_items_table.setItem(row_idx, 2, QTableWidgetItem(f"{item['unit_price']:.2f}"))
+            self.invoice_items_table.setItem(row_idx, 3, QTableWidgetItem(f"{item['quantity'] * item['unit_price']:.2f}"))
+
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
             QMessageBox.warning(self, "Input Error", "Select a product.")
@@ -161,10 +184,41 @@ class InvoiceView(QWidget):
         self.items.append({
             "product_id": product.product_id,
             "quantity": quantity,
-            "unit_price": product.price
+            "unit_price": product.price,
+            "product_name": product.name  # Store product name for display
         })
 
-        self.invoice_items_list.addItem(f"{product.name} x {quantity} @ GHS {product.price}")
+        self.load_invoice_items_table()
+        self.update_total()
+        self.quantity_input.clear()
+
+    def update_selected_item(self):
+        selected = self.invoice_items_table.currentRow()
+        if selected == -1:
+            QMessageBox.warning(self, "Select Item", "Please select an item to update.")
+            return
+        try:
+            quantity = int(self.quantity_input.text())
+        except ValueError:
+            QMessageBox.warning(self, "Input Error", "Enter a valid quantity.")
+            return
+        product_name = self.invoice_items_table.item(selected, 0).text()
+        for item in self.items:
+            if item['product_name'] == product_name:
+                item['quantity'] = quantity
+                break
+        self.load_invoice_items_table()
+        self.update_total()
+        self.quantity_input.clear()
+
+    def delete_selected_item(self):
+        selected = self.invoice_items_table.currentRow()
+        if selected == -1:
+            QMessageBox.warning(self, "Select Item", "Please select an item to delete.")
+            return
+        product_name = self.invoice_items_table.item(selected, 0).text()
+        self.items = [item for item in self.items if item['product_name'] != product_name]
+        self.load_invoice_items_table()
         self.update_total()
         self.quantity_input.clear()
 
@@ -193,10 +247,22 @@ class InvoiceView(QWidget):
         self.reset_invoice_form()
 
     def reset_invoice_form(self):
-        self.invoice_items_list.clear()
+        self.invoice_items_table.setRowCount(0)
         self.discount_input.clear()
         self.tax_input.clear()
         self.total_label.setText("Total: GHS 0.00")
         self.items = []
         self.load_products()
         self.load_customers()
+        self.load_invoice_items_table()
+
+    def populate_fields_from_selection(self):
+        selected = self.invoice_items_table.currentRow()
+        if selected == -1:
+            self.product_dropdown.setCurrentIndex(0)
+            self.quantity_input.clear()
+            return
+        product_name = self.invoice_items_table.item(selected, 0).text()
+        quantity = self.invoice_items_table.item(selected, 1).text()
+        self.product_dropdown.setCurrentText(product_name)
+        self.quantity_input.setText(quantity)
