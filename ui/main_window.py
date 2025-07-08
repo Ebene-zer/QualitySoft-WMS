@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
 )
 from PyQt6.QtGui import QFont
-from PyQt6.QtCore import Qt
 import sys
 
 from ui.product_view import ProductView
@@ -55,7 +54,7 @@ class MainWindow(QWidget):
         btn_logout.setFont(QFont("Segoe UI", 10, QFont.Weight.Medium))
         btn_logout.setStyleSheet("""
             QPushButton {
-                background-color: #e74c3c;
+                background-color: orange;
                 color: white;
                 border-radius: 6px;
                 padding: 8px 14px;

@@ -2,16 +2,16 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QMessageBox, QHBoxLayout
 )
-from models.product import Product #Import the product model for use
+
+from database.db_handler import get_db_connection
+from models.product import Product
 
 #Product View Class
 class ProductView(QWidget):
     def __init__(self):
         super().__init__()
-        # Tab title and style
-        self.setWindowTitle("Product Management")
+        # Tab style
         self.setStyleSheet(self.get_stylesheet())
-        self.setMinimumSize(600, 400)
 
         self.layout = QVBoxLayout() #Set Layout
 
@@ -27,6 +27,9 @@ class ProductView(QWidget):
         self.stock_input = QLineEdit()
         self.stock_input.setPlaceholderText("Stock Quantity")
         self.layout.addWidget(self.stock_input)
+
+        # Enter key support
+        self.stock_input.returnPressed.connect(self.add_product)
 
         # Add Product Button
         add_button = QPushButton("Add Product")
@@ -98,14 +101,14 @@ class ProductView(QWidget):
         }
         """
 
-#Load Products Method
+    #Load Products Method
     def load_products(self):
         self.product_list.clear()
         products = Product.get_all_products()
         for p in products:
             self.product_list.addItem(f"{p.product_id} | {p.name} | GHS {p.price:.2f} | {p.stock_quantity}")
 
-#Act upon a click on Add Product Button
+    #Act upon a click on Add Product Button
     def add_product(self):
         name = self.name_input.text().strip()
         try:
@@ -119,14 +122,35 @@ class ProductView(QWidget):
             QMessageBox.warning(self, "Input Error", "Product name cannot be empty.")
             return
 
-#Call add_product method from the Product Class and pass the entered values
+        #Call add_product method from the Product Class and pass the entered values
         Product.add_product(name, price, stock)
         QMessageBox.information(self, "Success", "Product added.")
         self.clear_inputs()
         self.load_products()
 
+    # Populate fields with product details for editing
+    # def populate_product_fields(self, item):
+    #     # Defensive: Ensure item has expected format
+    #     text = item.text()
+    #     if " (" not in text:
+    #         QMessageBox.warning(self, "Error", "Selected item format is invalid.")
+    #         return
+    #     name = text.split(" (" )[0]
+    #     connection = get_db_connection()
+    #     cursor = connection.cursor()
+    #     cursor.execute("SELECT name, price, stock)quantity FROM products WHERE username = ?", (name,))
+    #     product = cursor.fetchone()
+    #     connection.close()
+    #     if product:
+    #         self.name_input.setText(product[0])
+    #         self.price_input.setText(product[1])
+    #         self.stock_input.setText(product[2])
+    #     else:
+    #         QMessageBox.warning(self, "Error", f"User '{name}' not found in database.")
 
-#Act upon a click on Update Product
+
+
+    #Act upon a click on Update Product
     def update_product(self):
         selected_item = self.product_list.currentItem()
         if not selected_item:
@@ -148,14 +172,14 @@ class ProductView(QWidget):
             QMessageBox.warning(self, "Input Error", "Product name cannot be empty.")
             return
 
-#Call update_product from Product Class and Pass values
+        #Call update_product from Product Class and Pass values
         Product.update_product(product_id, name, price, stock)
         QMessageBox.information(self, "Success", "Product updated.")
         self.clear_inputs()
         self.load_products()
 
 
-# Act upon a click on Delete product
+    # Act upon a click on Delete product
     def delete_product(self):
         selected_item = self.product_list.currentItem()
         if not selected_item:

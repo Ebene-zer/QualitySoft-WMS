@@ -49,6 +49,9 @@ class InvoiceView(QWidget):
         self.quantity_input.setPlaceholderText("Quantity")
         self.layout.addWidget(self.quantity_input)
 
+        # Enter key support
+        self.quantity_input.returnPressed.connect(self.add_item_to_invoice)
+
         # Add Item Button
         add_item_button = QPushButton("Add to Invoice")
         add_item_button.clicked.connect(self.add_item_to_invoice)
@@ -104,7 +107,7 @@ class InvoiceView(QWidget):
             border: 2px solid #3498db;
         }
         QPushButton {
-            background-color: #3498db;
+            background-color: #2980b9;
             color: white;
             border: none;
             border-radius: 6px;
@@ -112,7 +115,7 @@ class InvoiceView(QWidget):
             margin-top: 8px;
         }
         QPushButton:hover {
-            background-color: #2980b9;
+            background-color: #3498db;
         }
         QListWidget {
             background-color: white;
@@ -152,7 +155,7 @@ class InvoiceView(QWidget):
         product = Product.get_product_by_id(product_id)
 
         if quantity > product.stock_quantity:
-            QMessageBox.warning(self, "Stock Error", f"Only {product.stock_quantity} units available.")
+            QMessageBox.warning(self, "Low Stock", f"Only {product.stock_quantity} units available.")
             return
 
         self.items.append({

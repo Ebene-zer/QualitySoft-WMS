@@ -1,9 +1,12 @@
 import sqlite3
+import os
 
-DB_NAME = "wholesale.db"
+DB_NAME = os.environ.get("WMS_DB_NAME", "wholesale.db")
 
-def get_db_connection():
-    connection = sqlite3.connect(DB_NAME, timeout=10)
+def get_db_connection(db_name=None):
+    if db_name is None:
+        db_name = DB_NAME
+    connection = sqlite3.connect(db_name, timeout=10)
     return connection
 
 def initialize_database():

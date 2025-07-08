@@ -91,3 +91,27 @@ class User:
         result = cursor.fetchone()
         connection.close()
         return result is not None
+
+    @staticmethod
+    def update_user(old_username, new_username, new_password, new_role):
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        hashed_password = User.hash_password(new_password)
+        try:
+            cursor.execute(
+                "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE username = ?",
+                (new_username, hashed_password, new_role, old_username)
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+    @staticmethod
+    def delete_user(username):
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute("DELETE FROM users WHERE username = ?", (username,))
+            connection.commit()
+        finally:
+            connection.close()

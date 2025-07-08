@@ -1,4 +1,3 @@
-
 import os
 import tempfile
 import webbrowser
@@ -6,7 +5,10 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QPushButton, QMessageBox, QComboBox, QCompleter, QFileDialog
 )
+
 from PyQt6.QtCore import Qt, QObject, QEvent
+
+
 from models.invoice import Invoice
 
 from reportlab.lib.pagesizes import A4
@@ -25,7 +27,6 @@ class SelectAllOnFocus(QObject):
 class ReceiptView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("View Receipt")
         self.setStyleSheet(self.get_stylesheet())
         self.layout = QVBoxLayout()
 
@@ -37,10 +38,12 @@ class ReceiptView(QWidget):
         self.invoice_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.invoice_dropdown.setCompleter(self.invoice_completer)
         self.invoice_dropdown.lineEdit().installEventFilter(focus_filter)
+        self.invoice_dropdown.lineEdit().returnPressed.connect(self.show_receipt)
         self.layout.addWidget(QLabel("Select Invoice:"))
         self.layout.addWidget(self.invoice_dropdown)
 
-        self.show_receipt_button = QPushButton("📑 Load Receipt")
+
+        self.show_receipt_button = QPushButton("📑 Load Invoice")
         self.show_receipt_button.clicked.connect(self.show_receipt)
         self.layout.addWidget(self.show_receipt_button)
 
@@ -82,7 +85,7 @@ class ReceiptView(QWidget):
             border: 2px solid #3498db;
         }
         QPushButton {
-            background-color: #3498db;
+            background-color: #2980b9;
             color: white;
             border: none;
             border-radius: 6px;
@@ -90,7 +93,7 @@ class ReceiptView(QWidget):
             margin-top: 8px;
         }
         QPushButton:hover {
-            background-color: #2980b9;
+            background-color: #3498db;
         }
         QTableWidget {
             background-color: white;
@@ -125,24 +128,32 @@ class ReceiptView(QWidget):
         for item in invoice["items"]:
             row = self.receipt_table.rowCount()
             self.receipt_table.insertRow(row)
-            self.receipt_table.setItem(row, 0, QTableWidgetItem(item['product_name']))
-            self.receipt_table.setItem(row, 1, QTableWidgetItem(str(item['quantity'])))
-            self.receipt_table.setItem(row, 2, QTableWidgetItem(f"GHS {item['unit_price']:.2f}"))
+            item_product = QTableWidgetItem(item['product_name'])
+            item_product.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            self.receipt_table.setItem(row, 0, item_product)
+            item_qty = QTableWidgetItem(str(item['quantity']))
+            item_qty.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            self.receipt_table.setItem(row, 1, item_qty)
+            item_price = QTableWidgetItem(f"GHS {item['unit_price']:.2f}")
+            item_price.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            self.receipt_table.setItem(row, 2, item_price)
             total = item['quantity'] * item['unit_price']
-            self.receipt_table.setItem(row, 3, QTableWidgetItem(f"GHS {total:.2f}"))
+            item_total = QTableWidgetItem(f"GHS {total:.2f}")
+            item_total.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            self.receipt_table.setItem(row, 3, item_total)
 
 
 
     def export_to_pdf(self):
 
         if self.invoice_dropdown.currentIndex() == -1:
-            QMessageBox.warning(self, "Export Error", "Please load a receipt first.")
+            QMessageBox.warning(self, "Export Error", "Please load an invoice first.")
             return
 
         invoice_text = self.invoice_dropdown.currentText()
         invoice_id = int(invoice_text.split(" - ")[0])
         default_filename = f"receipt_{invoice_id}.pdf"
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Receipt as PDF", default_filename, "PDF Files (*.pdf)")
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Invoice as PDF", default_filename, "PDF Files (*.pdf)")
 
         if not file_path:
             return
@@ -154,7 +165,7 @@ class ReceiptView(QWidget):
 
         # Prepare data
         invoice_number = invoice.get("invoice_id", "")
-        invoice_date = invoice.get("date", "")
+        invoice_date = invoice.get("invoice_date", "")
         customer_name = invoice.get("customer_name", "")
         items = [
             [
@@ -184,7 +195,7 @@ class ReceiptView(QWidget):
             spaceAfter=10,
             fontName="Helvetica-Bold"
         )
-        elements.append(Paragraph("Wholesale Management System", title_style))
+        elements.append(Paragraph("Wholesale Name Here", title_style))
 
         # Invoice details
         elements.append(Paragraph(f"Invoice Number: {invoice_number}", styles["Normal"]))
@@ -216,11 +227,12 @@ class ReceiptView(QWidget):
         elements.append(Spacer(1, 16))
 
         # Summary
-        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=250)
+        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=400,)
         elements.append(Paragraph(f"Discount: GHS {discount}", summary_style))
         elements.append(Paragraph(f"Tax: GHS {tax}", summary_style))
         elements.append(Paragraph(f"Total: GHS {total}", summary_style))
         elements.append(Spacer(1, 30))
+
 
 
         # Footer
@@ -233,7 +245,7 @@ class ReceiptView(QWidget):
             spaceBefore=40
         )
         elements.append(Spacer(1, 60))
-        elements.append(Paragraph("Thank you for doing business with us!", footer_style))
+        elements.append(Paragraph("Thank you for buying from us!", footer_style))
 
         doc.build(elements)
         QMessageBox.information(self, "Export Complete", f"Receipt saved as {file_path}")
@@ -257,13 +269,13 @@ class ReceiptView(QWidget):
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp_path = tmp.name
-        self.export_to_pdf_reportlab_custom_path(invoice, tmp_path)
+        self.export_to_pdf_custom_path(invoice, tmp_path)
         webbrowser.open(tmp_path)
 
     def export_to_pdf_custom_path(self, invoice, file_path):
 
         invoice_number = invoice.get("invoice_id", "")
-        invoice_date = invoice.get("date", "")
+        invoice_date = invoice.get("invoice_date", "")
         customer_name = invoice.get("customer_name", "")
         items = [
             [
@@ -291,7 +303,7 @@ class ReceiptView(QWidget):
             spaceAfter=10,
             fontName="Helvetica-Bold"
         )
-        elements.append(Paragraph("Wholesale Management System", title_style))
+        elements.append(Paragraph("Wholesale Name Here", title_style))
         elements.append(Paragraph(f"Invoice Number: {invoice_number}", styles["Normal"]))
         elements.append(Paragraph(f"Date: {invoice_date}", styles["Normal"]))
         elements.append(Spacer(1, 8))
@@ -317,7 +329,7 @@ class ReceiptView(QWidget):
         elements.append(table)
         elements.append(Spacer(1, 16))
 
-        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=250)
+        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=400)
         elements.append(Paragraph(f"Discount: GHS {discount}", summary_style))
         elements.append(Paragraph(f"Tax: GHS {tax}", summary_style))
         elements.append(Paragraph(f"Total: GHS {total}", summary_style))
@@ -332,6 +344,6 @@ class ReceiptView(QWidget):
             spaceBefore=40
         )
         elements.append(Spacer(1, 60))
-        elements.append(Paragraph("Thank you for doing business with us!", footer_style))
+        elements.append(Paragraph("Thank you for buying from us!", footer_style))
 
         doc.build(elements)

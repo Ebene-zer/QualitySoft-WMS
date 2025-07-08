@@ -24,12 +24,12 @@ class UserView(QWidget):
               QPushButton {
                   padding: 9px 15px;
                   border-radius: 6px;
-                  background-color: #2E86C1;
+                  background-color: #21618C;
                   color: white;
                   font-weight: bold;
               }
               QPushButton:hover {
-                  background-color: #21618C;
+                  background-color: #3498db;
               }
               QListWidget {
                   border: 1px solid #ccc;
@@ -55,6 +55,8 @@ class UserView(QWidget):
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.returnPressed.connect(self.add_user)
+        self.username_input.returnPressed.connect(self.add_user)
         self.layout.addWidget(self.password_input)
 
         role_layout = QVBoxLayout()
@@ -65,14 +67,24 @@ class UserView(QWidget):
         role_layout.addWidget(self.role_combo)
         self.layout.addLayout(role_layout)
 
+
+
         # Add User Button
         add_button = QPushButton("Add User")
         add_button.clicked.connect(self.add_user)
         self.layout.addWidget(add_button)
 
+
         # User List
         self.user_list = QListWidget()
+        self.user_list.itemClicked.connect(self.populate_user_fields)
         self.layout.addWidget(self.user_list)
+
+        # Update User Button
+        update_button = QPushButton("Update User")
+        update_button.clicked.connect(self.update_user)
+        self.layout.addWidget(update_button)
+
 
         # Delete User Button
         delete_button = QPushButton("Delete Selected User")
@@ -112,6 +124,47 @@ class UserView(QWidget):
             self.password_input.clear()
         except sqlite3.IntegrityError:
             QMessageBox.warning(self, "Error", f"Username '{username}' already exists.")
+
+    # Populate fields with user data for editing
+    def populate_user_fields(self, item):
+        # Defensive: Ensure item has expected format
+        text = item.text()
+        if " (" not in text:
+            QMessageBox.warning(self, "Error", "Selected item format is invalid.")
+            return
+        username = text.split(" (" )[0]
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT username, role FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        connection.close()
+        if user:
+            self.username_input.setText(user[0])
+            self.password_input.clear()  # Do not show password hash
+            self.role_combo.setCurrentText(user[1])
+        else:
+            QMessageBox.warning(self, "Error", f"User '{username}' not found in database.")
+
+    def update_user(self):
+        selected_item = self.user_list.currentItem()
+        if not selected_item:
+            QMessageBox.warning(self, "Select User", "Please select a user to update.")
+            return
+        old_username = selected_item.text().split(" (")[0]
+        new_username = self.username_input.text().strip()
+        new_password = self.password_input.text().strip()
+        new_role = self.role_combo.currentText()
+        if not new_username or not new_password:
+            QMessageBox.warning(self, "Input Error", "Username and password cannot be empty.")
+            return
+        try:
+            User.update_user(old_username, new_username, new_password, new_role)
+            QMessageBox.information(self, "Success", f"User '{old_username}' updated.")
+            self.load_users()
+            self.username_input.clear()
+            self.password_input.clear()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
 
 
      #Act Upon a click on Delete User

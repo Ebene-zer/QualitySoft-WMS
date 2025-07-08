@@ -9,9 +9,9 @@ from models.customer import Customer #Bring the Customer class to use
 class CustomerView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Customer Management") #Tab name
+     #   self.setWindowTitle("Customer Management") #Tab name
         self.setStyleSheet(self.get_stylesheet())
-        self.setMinimumSize(600, 400)
+      #  self.setMinimumSize(600, 400)
 
         self.layout = QVBoxLayout()
 
@@ -58,7 +58,7 @@ class CustomerView(QWidget):
         self.setLayout(self.layout)
         self.load_customers()
 
-#Customer View Style
+    #Customer View Style
     def get_stylesheet(self):
         return """
         QWidget {
@@ -101,7 +101,7 @@ class CustomerView(QWidget):
         }
         """
 
-#Load created customers
+    #Load added customers
     def load_customers(self):
         self.customer_list.clear()
         customers = Customer.get_all_customers()
@@ -109,7 +109,7 @@ class CustomerView(QWidget):
             self.customer_list.addItem(f"{c.customer_id} - {c.name} | {c.phone_number} | {c.address}")
 
 
-# Act upon a click on Add Customer Button
+    # Act upon a click on Add Customer Button
     def add_customer(self):
         name = self.name_input.text().strip()
         phone_number = self.phone_input.text().strip()
@@ -128,15 +128,15 @@ class CustomerView(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to add customer:\n{e}")
 
 
-# Act upon a click on Update Customer button
+    # Act upon a click on Update Customer button
     def update_customer(self):
         customer_id = self.get_selected_customer_id()
         if customer_id is None:
-            QMessageBox.warning(self, "Selection Error", "Select a valid customer to update.")
+            QMessageBox.warning(self, "Selection Error", "Select a customer to update.")
             return
 
         name = self.name_input.text().strip()
-        phone_namber = self.phone_input.text().strip()
+        phone_number = self.phone_input.text().strip()
         address = self.address_input.text().strip()
 
         if not name:
@@ -149,7 +149,7 @@ class CustomerView(QWidget):
         self.clear_inputs()
 
 
-# Act upon a click on Delete Customer Button
+    # Act upon a click on Delete Customer Button
     def delete_customer(self):
         customer_id = self.get_selected_customer_id()
         if customer_id is None:
@@ -158,7 +158,7 @@ class CustomerView(QWidget):
 
         reply = QMessageBox.question(
             self, "Confirm Delete",
-            f"Are you sure you want to delete customer #{customer_id}?",
+            f"Are you sure you want to delete customer {customer_id}?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -166,7 +166,7 @@ class CustomerView(QWidget):
             QMessageBox.information(self, "Deleted", "Customer deleted.")
             self.load_customers()
 
-#
+
     def get_selected_customer_id(self):
         selected = self.customer_list.currentItem()
         if not selected:
@@ -180,7 +180,7 @@ class CustomerView(QWidget):
         except ValueError:
             return None
 
-#Clear Input after usage
+   #Clear Input after usage
     def clear_inputs(self):
         self.name_input.clear()
         self.phone_input.clear()

@@ -1,5 +1,3 @@
-
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QComboBox, QHBoxLayout
 )
@@ -12,46 +10,48 @@ from ui.main_window import MainWindow
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("QUALITYSOFT WMS - Login")
+        self.setWindowTitle("QUALITYSOFT WMS (Ebenezer Fuachie) - Login")
         self.resize(450, 300)
         self.setMinimumSize(350, 250)
 
-        self.bg_label = QLabel(self)
-        self.bg_label.setGeometry(0, 0, self.width(), self.height())
-        self.bg_label.lower()
+        #To be used later-Animated background
 
+        # self.bg_label = QLabel(self)
+        # self.bg_label.setGeometry(0, 0, self.width(), self.height())
+        # self.bg_label.lower()
+        #
+        #
+        # movie = QMovie("anime/animation.gif")
+        # self.bg_label.setMovie(movie)
+        # movie.start()
+        # self.resizeEvent = lambda event: self.bg_label.setGeometry(0, 0, self.width(), self.height())
 
-        movie = QMovie("anime/animation.gif")
-        self.bg_label.setMovie(movie)
-        movie.start()
-        self.resizeEvent = lambda event: self.bg_label.setGeometry(0, 0, self.width(), self.height())
-
-        # self.setStyleSheet("""
-        #     QWidget {
-        #         background-color: #f4f6f9;
-        #     }
-        #     QLabel {
-        #         color: #333;
-        #         font-size: 16px;
-        #     }
-        #     QLineEdit, QComboBox {
-        #         padding: 8px;
-        #         border: 1px solid #bbb;
-        #         border-radius: 6px;
-        #         font-size: 14px;
-        #     }
-        #     QPushButton {
-        #         padding: 10px;
-        #         font-weight: bold;
-        #         background-color: #005bb5;
-        #         color: white;
-        #         border: none;
-        #         border-radius: 6px;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #004999;
-        #     }
-        # """)
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #f4f6f9;
+            }
+            QLabel {
+                color: #333;
+                font-size: 16px;
+            }
+            QLineEdit, QComboBox {
+                padding: 8px;
+                border: 1px solid #bbb;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QPushButton {
+                padding: 10px;
+                font-weight: bold;
+                background-color: #005bb5;
+                color: white;
+                border: none;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #004999;
+            }
+        """)
 
         layout = QVBoxLayout()
 
@@ -59,6 +59,7 @@ class LoginWindow(QWidget):
         title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
+
 
         # Role selection
         role_layout = QVBoxLayout()
