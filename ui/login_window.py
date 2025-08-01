@@ -10,21 +10,11 @@ from ui.main_window import MainWindow
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("QUALITYSOFT WMS (Ebenezer Fuachie) - Login")
+        self.setWindowTitle("QUALITYSOFT WMS - Login")
         self.resize(450, 300)
         self.setMinimumSize(350, 250)
 
-        #To be used later-Animated background
 
-        # self.bg_label = QLabel(self)
-        # self.bg_label.setGeometry(0, 0, self.width(), self.height())
-        # self.bg_label.lower()
-        #
-        #
-        # movie = QMovie("anime/animation.gif")
-        # self.bg_label.setMovie(movie)
-        # movie.start()
-        # self.resizeEvent = lambda event: self.bg_label.setGeometry(0, 0, self.width(), self.height())
 
         self.setStyleSheet("""
             QWidget {
@@ -56,7 +46,7 @@ class LoginWindow(QWidget):
         layout = QVBoxLayout()
 
         title = QLabel("Welcome to WMS")
-        title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
+        title.setFont(QFont("Arial", 22,QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
@@ -87,7 +77,9 @@ class LoginWindow(QWidget):
         self.toggle_password_btn = QPushButton()
         self.toggle_password_btn.setCheckable(True)
         self.toggle_password_btn.setFixedWidth(30)
-        self.toggle_password_btn.setIcon(QIcon("icons/eye_closed.png"))
+        self.toggle_password_btn.setFixedHeight(30)
+        self.toggle_password_btn.setToolTip("Show/Hide Password")
+        self.toggle_password_btn.setIcon(QIcon("icons/closed_eye.png"))
         self.toggle_password_btn.setIconSize(QSize(24, 24))
         self.toggle_password_btn.clicked.connect(self.toggle_password_visibility)
 
@@ -129,7 +121,7 @@ class LoginWindow(QWidget):
     def toggle_password_visibility(self):
         if self.toggle_password_btn.isChecked():
             self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.toggle_password_btn.setIcon(QIcon("icons/eye_open.png"))
+            self.toggle_password_btn.setIcon(QIcon("icons/open_eye.png"))
         else:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.toggle_password_btn.setIcon(QIcon("icons/eye_closed.png"))
+            self.toggle_password_btn.setIcon(QIcon("icons/closed_eye.png"))

@@ -158,7 +158,7 @@ class Invoice:
         cursor = connection.cursor()
 
         cursor.execute("""
-            SELECT i.invoice_id, c.name, i.invoice_date, i.discount, i.tax, i.total_amount
+            SELECT i.invoice_id, c.name, i.invoice_date, i.discount, i.tax, i.total_amount, i.customer_id, c.phone_number
             FROM invoices i
             JOIN customers c ON i.customer_id = c.customer_id
             WHERE i.invoice_id = ?
@@ -176,6 +176,8 @@ class Invoice:
             "discount": row[3],
             "tax": row[4],
             "total_amount": row[5],
+            "customer_id": row[6],
+            "customer_number": row[7],
             "items": []
         }
 

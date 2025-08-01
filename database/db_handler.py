@@ -28,7 +28,7 @@ def initialize_database():
         CREATE TABLE IF NOT EXISTS customers (
             customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            phone_number TEXT,
+            phone_number TEXT CHECK (LENGTH(phone_number) = 10),
             address TEXT
         )
     """)

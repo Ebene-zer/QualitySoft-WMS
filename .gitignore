@@ -79,3 +79,6 @@ wholesale.db
 # System files
 .DS_Store
 Thumbs.db
+
+# .gitignore for backup folder
+backup/

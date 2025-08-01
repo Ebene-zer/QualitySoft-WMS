@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QLabel
 )
 from PyQt6.QtGui import QFont
 import sys
@@ -31,23 +31,38 @@ class MainWindow(QWidget):
 
         self.nav_buttons = []
 
-        def create_nav_button(text, index):
+        def create_nav_button(text, index, height=40, font_size=10, width=None):
             btn = QPushButton(text)
-            btn.setFixedHeight(40)
-            btn.setFont(QFont("Segoe UI", 10, QFont.Weight.Medium))
+            btn.setFixedHeight(height)
+            btn.setFont(QFont("Segoe UI", font_size, QFont.Weight.Medium))
+            if width:
+                btn.setFixedWidth(width)
             btn.setStyleSheet(self.button_style(normal=True))
             btn.clicked.connect(lambda: self.switch_view(index))
             button_bar_layout.addWidget(btn)
             self.nav_buttons.append(btn)
 
-        create_nav_button("🛒 Products", 0)
-        create_nav_button("👥 Customers", 1)
-        create_nav_button("🧾 Invoices", 2)
-        create_nav_button("📄 Receipts", 3)
+        # Place 'More' button first, as a square with tooltip
+        btn_more = QPushButton("\u2630")
+        btn_more.setFixedHeight(40)
+        btn_more.setFixedWidth(40)
+        btn_more.setFont(QFont("Segoe UI", 14, QFont.Weight.Medium))
+        btn_more.setStyleSheet(self.button_style(normal=True))
+        btn_more.setToolTip("More")
+        btn_more.clicked.connect(lambda: self.switch_view(0))
+        button_bar_layout.addWidget(btn_more)
+        self.nav_buttons.append(btn_more)
 
+        create_nav_button("🛒 Products", 1, 40, 10)
+        create_nav_button("👥 Customers", 2, 40, 10)
+        create_nav_button("🧾 Invoices", 3, 40, 10)
+        create_nav_button("📄 Receipts", 4, 40, 10)
+
+        # Track the index for the Users tab
+        users_tab_index = 5
         if self.user_role.lower() in ["admin", "ceo"]:
-            create_nav_button("🔐 Users", 4)
-
+            create_nav_button("🔐 Users", 5, 40, 10)
+            users_tab_index = 6
 
         btn_logout = QPushButton("🚪 Logout")
         btn_logout.setFixedHeight(40)
@@ -70,12 +85,17 @@ class MainWindow(QWidget):
 
         # Central stacked widget
         self.stacked_widget = QStackedWidget()
+        # Add More tab first
+        more_tab = QWidget()
+        more_layout = QVBoxLayout()
+        more_layout.addWidget(QLabel("More features coming soon..."))
+        more_tab.setLayout(more_layout)
+        self.stacked_widget.addWidget(more_tab)
         self.stacked_widget.addWidget(ProductView())
         self.stacked_widget.addWidget(CustomerView())
         self.stacked_widget.addWidget(InvoiceView())
         self.stacked_widget.addWidget(ReceiptView())
         self.stacked_widget.addWidget(UserView())
-
         main_layout.addWidget(self.stacked_widget)
         self.setLayout(main_layout)
 

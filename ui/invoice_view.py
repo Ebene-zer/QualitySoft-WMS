@@ -18,7 +18,6 @@ class SelectAllOnFocus(QObject):
 class InvoiceView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Invoice View")
         self.setStyleSheet(self.get_stylesheet())
         self.layout = QVBoxLayout()
 
@@ -121,7 +120,7 @@ class InvoiceView(QWidget):
             border: 2px solid #3498db;
         }
         QPushButton {
-            background-color: #2980b9;
+            background-color: #21618C;
             color: white;
             border: none;
             border-radius: 6px;

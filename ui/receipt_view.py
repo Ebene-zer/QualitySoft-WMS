@@ -32,6 +32,14 @@ class ReceiptView(QWidget):
 
         focus_filter = SelectAllOnFocus()
 
+        # role_layout = QVBoxLayout()
+        # role_label = QLabel("Access Level:")
+        # self.role_combo = QComboBox()
+        # self.role_combo.addItems(["Manager", "CEO", "Admin"])
+        # role_layout.addWidget(role_label)
+        # role_layout.addWidget(self.role_combo)
+        # self.layout.addLayout(role_layout)
+
         self.invoice_dropdown = QComboBox()
         self.invoice_dropdown.setEditable(True)
         self.invoice_completer = QCompleter()
@@ -85,7 +93,7 @@ class ReceiptView(QWidget):
             border: 2px solid #3498db;
         }
         QPushButton {
-            background-color: #2980b9;
+            background-color: #21618C;
             color: white;
             border: none;
             border-radius: 6px;
@@ -107,6 +115,8 @@ class ReceiptView(QWidget):
     def load_invoices(self):
         self.invoice_dropdown.clear()
         invoices = Invoice.get_all_invoices()
+        # Show newest invoices at the top
+        invoices = sorted(invoices, key=lambda inv: getattr(inv, 'invoice_id', 0), reverse=True)
         invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GHS {inv.total_amount:.2f}" for inv in invoices]
         self.invoice_dropdown.addItems(invoice_strs)
         self.invoice_completer.setModel(self.invoice_dropdown.model())
@@ -124,6 +134,20 @@ class ReceiptView(QWidget):
         if not invoice:
             QMessageBox.warning(self, "Load Error", "Invoice not found.")
             return
+
+        # --- Enhancement: Show extra details ---
+        # You can make this configurable by loading from a config file or settings UI
+        wholesale_contact = "Contact: 0244-000-000"  # You can make this configurable
+        customer_number = invoice.get("customer_number", "N/A")
+        total_items = sum(item['quantity'] for item in invoice["items"])
+
+        # Remove previous details if any
+        if hasattr(self, 'details_label'):
+            self.layout.removeWidget(self.details_label)
+            self.details_label.deleteLater()
+        self.details_label = QLabel(f"Customer Number: {customer_number} | {wholesale_contact} | Total Items: {total_items}")
+        self.layout.insertWidget(3, self.details_label)  # Insert after invoice dropdown and button
+        # --- End enhancement ---
 
         for item in invoice["items"]:
             row = self.receipt_table.rowCount()
@@ -167,6 +191,8 @@ class ReceiptView(QWidget):
         invoice_number = invoice.get("invoice_id", "")
         invoice_date = invoice.get("invoice_date", "")
         customer_name = invoice.get("customer_name", "")
+        customer_number = invoice.get("customer_number", "N/A")
+        wholesale_contact = "Wholesale Number: 0244-000-000"  # You can make this configurable
         items = [
             [
                 item["product_name"],
@@ -176,6 +202,7 @@ class ReceiptView(QWidget):
             ]
             for item in invoice["items"]
         ]
+        total_items = sum(item['quantity'] for item in invoice["items"])
         discount = f"{invoice.get('discount', 0):.2f}"
         tax = f"{invoice.get('tax', 0):.2f}"
         total = f"{invoice.get('total_amount', 0):.2f}"
@@ -197,19 +224,20 @@ class ReceiptView(QWidget):
         )
         elements.append(Paragraph("Wholesale Name Here", title_style))
 
-        # Invoice details
+        # Invoice details (with enhancements)
         elements.append(Paragraph(f"Invoice Number: {invoice_number}", styles["Normal"]))
         elements.append(Paragraph(f"Date: {invoice_date}", styles["Normal"]))
-        elements.append(Spacer(1, 8))
-
-        # Customer name
         elements.append(Paragraph(f"Customer Name: {customer_name}", styles["Normal"]))
+        elements.append(Paragraph(f"Customer Number: {customer_number}", styles["Normal"]))
+        elements.append(Paragraph(f"{wholesale_contact}", styles["Normal"]))
         elements.append(Spacer(1, 12))
 
         # Table data
         table_data = [
             ["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]
         ] + items
+        # Add total items row at the bottom
+        table_data.append(["", f"Total Items: {total_items}", "", ""])
 
         table = Table(table_data, colWidths=[60*mm, 30*mm, 40*mm, 40*mm])
         table.setStyle(TableStyle([
@@ -220,8 +248,10 @@ class ReceiptView(QWidget):
             ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
             ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
             ("TOPPADDING", (0, 0), (-1, 0), 8),
-            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-            ("TOPPADDING", (0, 1), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 1), (-1, -2), 6),
+            ("TOPPADDING", (0, 1), (-1, -2), 6),
+            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ("BACKGROUND", (0, -1), (-1, -1), colors.whitesmoke),
         ]))
         elements.append(table)
         elements.append(Spacer(1, 16))
@@ -274,9 +304,13 @@ class ReceiptView(QWidget):
 
     def export_to_pdf_custom_path(self, invoice, file_path):
 
+        # Debug: Print invoice dictionary to check for customer_number
+        # print('DEBUG INVOICE:', invoice)
         invoice_number = invoice.get("invoice_id", "")
         invoice_date = invoice.get("invoice_date", "")
         customer_name = invoice.get("customer_name", "")
+        customer_number = invoice.get("customer_number", "N/A")
+        wholesale_contact = "Wholesale Contact: 0244-000-000"  # You can make this configurable
         items = [
             [
                 item["product_name"],
@@ -286,6 +320,7 @@ class ReceiptView(QWidget):
             ]
             for item in invoice["items"]
         ]
+        total_items = sum(item['quantity'] for item in invoice["items"])
         discount = f"{invoice.get('discount', 0):.2f}"
         tax = f"{invoice.get('tax', 0):.2f}"
         total = f"{invoice.get('total_amount', 0):.2f}"
@@ -306,13 +341,15 @@ class ReceiptView(QWidget):
         elements.append(Paragraph("Wholesale Name Here", title_style))
         elements.append(Paragraph(f"Invoice Number: {invoice_number}", styles["Normal"]))
         elements.append(Paragraph(f"Date: {invoice_date}", styles["Normal"]))
-        elements.append(Spacer(1, 8))
         elements.append(Paragraph(f"Customer Name: {customer_name}", styles["Normal"]))
+        elements.append(Paragraph(f"Customer Number: {customer_number}", styles["Normal"]))
+        elements.append(Paragraph(f"{wholesale_contact}", styles["Normal"]))
         elements.append(Spacer(1, 12))
 
         table_data = [
             ["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]
         ] + items
+        table_data.append(["", f"Total Items: {total_items}", "", ""])
 
         table = Table(table_data, colWidths=[60*mm, 30*mm, 40*mm, 40*mm])
         table.setStyle(TableStyle([

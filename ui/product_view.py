@@ -88,7 +88,7 @@ class ProductView(QWidget):
             border: 2px solid #2980b9;
         }
         QPushButton {
-            background-color: #2980b9;
+            background-color: #21618C;
             color: white;
             border: none;
             border-radius: 8px;
@@ -174,6 +174,23 @@ class ProductView(QWidget):
         self.clear_inputs()
         self.load_products()
 
+#      def delete_product(self):
+    #         product_id = self.product_table.currentRow()
+    #         if product_id is None:
+    #             QMessageBox.warning(self, "Select Product", "Please select a product to delete.")
+    #             return
+    #         reply = QMessageBox.question(
+    #             self, "Confirm Delete",
+    #             f"Are you sure you want to delete product {product_id}?",
+    #             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+    #         )
+    #         if reply == QMessageBox.StandardButton.Yes:
+    #             Product.delete_product(product_id)
+    #             QMessageBox.information(self, "Deleted", "Product deleted.")
+    #             self.load_products()
+
+
+
 #Clear Input Fields
     def clear_inputs(self):
         self.name_input.clear()
@@ -193,4 +210,4 @@ class ProductView(QWidget):
         low_stock_products = Product.get_products_below_stock(10)
         if low_stock_products:
             product_names = ", ".join([f"{p.name} (Stock: {p.stock_quantity})" for p in low_stock_products])
-            QMessageBox.warning(self, "Low Stock Alert", f"The following products have low stock (<=10):\n{product_names}")
+            QMessageBox.warning(self, "Low Stock Alert", f"The following products have low stock:\n{product_names}")

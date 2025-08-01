@@ -1,4 +1,5 @@
 #Import Libraries and Framework
+from PyQt6.QtGui import QIntValidator
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
 )
@@ -21,6 +22,7 @@ class CustomerView(QWidget):
 
         self.phone_input = QLineEdit()
         self.phone_input.setPlaceholderText("Phone Number")
+        self.phone_input.setMaxLength(10)  # Limit to 10 digits
         self.layout.addWidget(self.phone_input)
 
         self.address_input = QLineEdit()
@@ -126,6 +128,9 @@ class CustomerView(QWidget):
         if not name:
             QMessageBox.warning(self, "Input Error", "Customer name is required.")
             return
+        if not (phone_number.isdigit() and len(phone_number) == 10):
+            QMessageBox.warning(self, "Input Error", "Phone number must be 10 digits.")
+            return
 
         try:
             Customer.add_customer(name, phone_number, address)
@@ -134,6 +139,7 @@ class CustomerView(QWidget):
             self.clear_inputs()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to add customer:\n{e}")
+
 
 
     # Act upon a click on Update Customer button
@@ -149,6 +155,9 @@ class CustomerView(QWidget):
 
         if not name:
             QMessageBox.warning(self, "Input Error", "Customer name is required.")
+            return
+        if not (phone_number.isdigit() and len(phone_number) == 10):
+            QMessageBox.warning(self, "Input Error", "Phone number must be 10 digits")
             return
 
         Customer.update_customer(customer_id, name, phone_number, address)
