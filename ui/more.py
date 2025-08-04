@@ -37,7 +37,8 @@ class SalesReportWidget(QWidget):
         # Auto-generate report if only one option (for Manager)
         if self.report_type_box.count() == 1:
             self.show_btn.setVisible(False)
-            self.generate_sales_report()  # Call directly instead of using QTimer
+            # Use QTimer to ensure UI is ready before generating report
+            QTimer.singleShot(0, self.generate_sales_report)
         else:
             self.show_btn.setVisible(True)
 
@@ -49,25 +50,43 @@ class SalesReportWidget(QWidget):
         if report_type == "Daily":
             start = today.strftime('%Y-%m-%d')
             end = start
+            # Try to match both DATE(invoice_date) and invoice_date LIKE 'YYYY-MM-DD%'
+            cursor.execute("""
+                SELECT invoice_date, total_amount FROM invoices
+                WHERE DATE(invoice_date) = ? OR invoice_date LIKE ?
+            """, (start, f"{start}%"))
         elif report_type == "Weekly":
             start = (today - datetime.timedelta(days=today.weekday())).strftime('%Y-%m-%d')
             end = today.strftime('%Y-%m-%d')
+            cursor.execute("""
+                SELECT invoice_date, total_amount FROM invoices
+                WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
+            """, (start, end, start, end))
         elif report_type == "Monthly":
             start = today.replace(day=1).strftime('%Y-%m-%d')
             end = today.strftime('%Y-%m-%d')
+            cursor.execute("""
+                SELECT invoice_date, total_amount FROM invoices
+                WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
+            """, (start, end, start, end))
         elif report_type == "Annual":
             start = today.replace(month=1, day=1).strftime('%Y-%m-%d')
             end = today.strftime('%Y-%m-%d')
+            cursor.execute("""
+                SELECT invoice_date, total_amount FROM invoices
+                WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
+            """, (start, end, start, end))
         else:
             self.result_label.setText("Invalid report type selected.")
             return
-        cursor.execute("""
-            SELECT invoice_date, total_amount FROM invoices
-            WHERE DATE(invoice_date) BETWEEN ? AND ?
-        """, (start, end))
+
         rows = cursor.fetchall()
+
         total_sales = sum(row[1] for row in rows)
-        report_msg = f"{report_type} Sales Report\nPeriod: {start} to {end}\nTotal Sales: GHS{total_sales:,.2f}\nTransactions: {len(rows)}"
+        if not rows:
+            report_msg = f"No sales found for {report_type.lower()} period ({start} to {end})."
+        else:
+            report_msg = f"{report_type} Sales Report\nPeriod: {start} to {end}\nTotal Sales: GHS{total_sales:,.2f}\nTransactions: {len(rows)}"
         self.result_label.setText(report_msg)
         conn.close()
 
@@ -177,6 +196,10 @@ class MoreDropdown(QWidget):
         self.on_option_selected = on_option_selected
         self.dropdown.currentIndexChanged.connect(self._on_index_changed)
 
+        # --- ADD THIS: Show the default widget on startup ---
+        QTimer.singleShot(0, lambda: self._on_index_changed(self.dropdown.currentIndex()))
+        # ----------------------------------------------------
+
     def _on_index_changed(self, index):
         # Clear content area
         while self.content_area.count():
@@ -184,12 +207,16 @@ class MoreDropdown(QWidget):
             if child.widget():
                 child.widget().deleteLater()
         self.current_widget = None  # Keep a reference to prevent garbage collection
-        if self.dropdown.itemText(index) == "Sales Report":
+        # Defensive: Check index and dropdown count
+        if self.dropdown.count() == 0 or index < 0:
+            return
+        selected_text = self.dropdown.itemText(index)
+        if selected_text == "Sales Report":
             report_widget = SalesReportWidget(self.user_role, self)
             self.content_area.addWidget(report_widget)
             report_widget.show()
             self.current_widget = report_widget
-        elif self.dropdown.itemText(index) == "Graph":
+        elif selected_text == "Graph":
             graph_widget = GraphWidget(self)
             self.content_area.addWidget(graph_widget)
             graph_widget.show()
