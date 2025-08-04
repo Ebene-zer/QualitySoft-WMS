@@ -1,14 +1,18 @@
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QLabel
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QLabel, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QMessageBox
 )
 from PyQt6.QtGui import QFont
+from PyQt6.QtCore import QDate, Qt
+import datetime
 import sys
 
+from database.db_handler import get_db_connection
 from ui.product_view import ProductView
 from ui.customer_view import CustomerView
 from ui.invoice_view import InvoiceView
 from ui.receipt_view import ReceiptView
 from ui.user_view import UserView
+from ui.more import MoreDropdown
 
 
 class MainWindow(QWidget):
@@ -53,18 +57,18 @@ class MainWindow(QWidget):
         button_bar_layout.addWidget(btn_more)
         self.nav_buttons.append(btn_more)
 
-        create_nav_button("🛒 Products", 1, 40, 10)
-        create_nav_button("👥 Customers", 2, 40, 10)
-        create_nav_button("🧾 Invoices", 3, 40, 10)
-        create_nav_button("📄 Receipts", 4, 40, 10)
+        create_nav_button("Products", 1, 40, 10)
+        create_nav_button("Customers", 2, 40, 10)
+        create_nav_button("Create Invoice", 3, 40, 10)
+        create_nav_button("Receipts", 4, 40, 10)
 
         # Track the index for the Users tab
         users_tab_index = 5
         if self.user_role.lower() in ["admin", "ceo"]:
-            create_nav_button("🔐 Users", 5, 40, 10)
+            create_nav_button("Users", 5, 40, 10)
             users_tab_index = 6
 
-        btn_logout = QPushButton("🚪 Logout")
+        btn_logout = QPushButton("Logout")
         btn_logout.setFixedHeight(40)
         btn_logout.setFont(QFont("Segoe UI", 10, QFont.Weight.Medium))
         btn_logout.setStyleSheet("""
@@ -88,19 +92,29 @@ class MainWindow(QWidget):
         # Add More tab first
         more_tab = QWidget()
         more_layout = QVBoxLayout()
-        more_layout.addWidget(QLabel("More features coming soon..."))
+        self.more_dropdown_widget = MoreDropdown(on_option_selected=self.handle_more_dropdown, user_role=self.user_role)
+        more_layout.addWidget(self.more_dropdown_widget)
         more_tab.setLayout(more_layout)
         self.stacked_widget.addWidget(more_tab)
-        self.stacked_widget.addWidget(ProductView())
-        self.stacked_widget.addWidget(CustomerView())
-        self.stacked_widget.addWidget(InvoiceView())
-        self.stacked_widget.addWidget(ReceiptView())
-        self.stacked_widget.addWidget(UserView())
+        self.product_view = ProductView()
+        self.customer_view = CustomerView()
+        self.invoice_view = InvoiceView()
+        self.receipt_view = ReceiptView()
+        self.user_view = UserView()
+        self.stacked_widget.addWidget(self.product_view)
+        self.stacked_widget.addWidget(self.customer_view)
+        self.stacked_widget.addWidget(self.invoice_view)
+        self.stacked_widget.addWidget(self.receipt_view)
+        self.stacked_widget.addWidget(self.user_view)
         main_layout.addWidget(self.stacked_widget)
         self.setLayout(main_layout)
 
+        # Connect invoice_created signal to refresh sales report if open
+        self.invoice_view.invoice_created.connect(self.refresh_more_features_dialog)
+        self.more_features_dialog = None
+
         # Set first button as active
-        self.switch_view(0)
+        self.switch_view(3)
 
     def button_style(self, normal=True):
         if normal:
@@ -148,11 +162,19 @@ class MainWindow(QWidget):
             else:
                 btn.setStyleSheet(self.button_style(normal=True))
 
+    def handle_more_dropdown(self, index):
+        # No longer needed, as MoreDropdown handles everything internally
+        pass
+
     def logout(self):
         from ui.login_window import LoginWindow
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()
+
+    def refresh_more_features_dialog(self):
+        # No longer needed
+        pass
 
 
 if __name__ == "__main__":

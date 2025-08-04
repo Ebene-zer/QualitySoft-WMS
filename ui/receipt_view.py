@@ -1,9 +1,8 @@
-import os
 import tempfile
 import webbrowser
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QPushButton, QMessageBox, QComboBox, QCompleter, QFileDialog
+    QPushButton, QMessageBox, QComboBox, QCompleter, QFileDialog, QDialog, QHBoxLayout
 )
 
 from PyQt6.QtCore import Qt, QObject, QEvent
@@ -18,6 +17,12 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.units import mm
 
 
+try:
+    from PyQt6.QtPdfWidgets import QPdfView
+    from PyQt6.QtPdf import QPdfDocument
+    HAS_QPDFVIEW = True
+except ImportError:
+    HAS_QPDFVIEW = False
 class SelectAllOnFocus(QObject):
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.FocusIn:
@@ -32,13 +37,6 @@ class ReceiptView(QWidget):
 
         focus_filter = SelectAllOnFocus()
 
-        # role_layout = QVBoxLayout()
-        # role_label = QLabel("Access Level:")
-        # self.role_combo = QComboBox()
-        # self.role_combo.addItems(["Manager", "CEO", "Admin"])
-        # role_layout.addWidget(role_label)
-        # role_layout.addWidget(self.role_combo)
-        # self.layout.addLayout(role_layout)
 
         self.invoice_dropdown = QComboBox()
         self.invoice_dropdown.setEditable(True)
@@ -51,7 +49,7 @@ class ReceiptView(QWidget):
         self.layout.addWidget(self.invoice_dropdown)
 
 
-        self.show_receipt_button = QPushButton("📑 Load Invoice")
+        self.show_receipt_button = QPushButton("Load Invoice")
         self.show_receipt_button.clicked.connect(self.show_receipt)
         self.layout.addWidget(self.show_receipt_button)
 
@@ -60,11 +58,11 @@ class ReceiptView(QWidget):
         self.receipt_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Total"])
         self.layout.addWidget(self.receipt_table)
 
-        self.export_pdf_button = QPushButton("📄 Export to PDF")
+        self.export_pdf_button = QPushButton("Export to PDF")
         self.export_pdf_button.clicked.connect(self.export_to_pdf)
         self.layout.addWidget(self.export_pdf_button)
 
-        self.print_button = QPushButton("🖨️ Print Receipt")
+        self.print_button = QPushButton("Print Receipt")
         self.print_button.clicked.connect(self.print_receipt)
         self.layout.addWidget(self.print_button)
 
@@ -115,7 +113,7 @@ class ReceiptView(QWidget):
     def load_invoices(self):
         self.invoice_dropdown.clear()
         invoices = Invoice.get_all_invoices()
-        # Show newest invoices at the top
+        # Show newly created invoices at the top
         invoices = sorted(invoices, key=lambda inv: getattr(inv, 'invoice_id', 0), reverse=True)
         invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GHS {inv.total_amount:.2f}" for inv in invoices]
         self.invoice_dropdown.addItems(invoice_strs)
@@ -137,7 +135,7 @@ class ReceiptView(QWidget):
 
         # --- Enhancement: Show extra details ---
         # You can make this configurable by loading from a config file or settings UI
-        wholesale_contact = "Contact: 0244-000-000"  # You can make this configurable
+        wholesale_contact = "Wholesale Contact: 0244-000-000"  # You can make this configurable
         customer_number = invoice.get("customer_number", "N/A")
         total_items = sum(item['quantity'] for item in invoice["items"])
 
@@ -145,9 +143,9 @@ class ReceiptView(QWidget):
         if hasattr(self, 'details_label'):
             self.layout.removeWidget(self.details_label)
             self.details_label.deleteLater()
-        self.details_label = QLabel(f"Customer Number: {customer_number} | {wholesale_contact} | Total Items: {total_items}")
-        self.layout.insertWidget(3, self.details_label)  # Insert after invoice dropdown and button
-        # --- End enhancement ---
+        # self.details_label = QLabel(f"Customer Number: {customer_number} | {wholesale_contact} | Total Items: {total_items}")
+        # self.layout.insertWidget(3, self.details_label)  # Insert after invoice dropdown and button
+        # # --- End enhancement ---
 
         for item in invoice["items"]:
             row = self.receipt_table.rowCount()
@@ -362,6 +360,8 @@ class ReceiptView(QWidget):
             ("TOPPADDING", (0, 0), (-1, 0), 8),
             ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
             ("TOPPADDING", (0, 1), (-1, -1), 6),
+            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ("BACKGROUND", (0, -1), (-1, -1), colors.whitesmoke),
         ]))
         elements.append(table)
         elements.append(Spacer(1, 16))
@@ -384,3 +384,5 @@ class ReceiptView(QWidget):
         elements.append(Paragraph("Thank you for buying from us!", footer_style))
 
         doc.build(elements)
+        # Remove QPrinter/QPainter printing logic to prevent crash
+        # The PDF is generated and opened for printing via the default PDF viewer.

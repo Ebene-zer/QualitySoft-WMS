@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox,
     QComboBox, QCompleter, QTableWidget, QTableWidgetItem, QHBoxLayout
 )
-from PyQt6.QtCore import Qt, QObject, QEvent
+from PyQt6.QtCore import Qt, QObject, QEvent, pyqtSignal
 from models.customer import Customer
 from models.product import Product
 from models.invoice import Invoice
@@ -16,6 +16,8 @@ class SelectAllOnFocus(QObject):
 
 
 class InvoiceView(QWidget):
+    invoice_created = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.setStyleSheet(self.get_stylesheet())
@@ -30,6 +32,7 @@ class InvoiceView(QWidget):
         self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.customer_dropdown.setCompleter(self.customer_completer)
         self.customer_dropdown.lineEdit().installEventFilter(focus_filter)
+        self.customer_dropdown.currentIndexChanged.connect(self._select_all_customer)
         self.layout.addWidget(QLabel("Select Customer:"))
         self.layout.addWidget(self.customer_dropdown)
 
@@ -40,6 +43,7 @@ class InvoiceView(QWidget):
         self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.product_dropdown.setCompleter(self.product_completer)
         self.product_dropdown.lineEdit().installEventFilter(focus_filter)
+        self.product_dropdown.currentIndexChanged.connect(self._select_all_product)
         self.layout.addWidget(QLabel("Select Product:"))
         self.layout.addWidget(self.product_dropdown)
 
@@ -87,7 +91,7 @@ class InvoiceView(QWidget):
         self.layout.addWidget(self.total_label)
 
         # Save Invoice Button
-        save_invoice_button = QPushButton("💾 Save Invoice")
+        save_invoice_button = QPushButton("Save Invoice")
         save_invoice_button.clicked.connect(self.save_invoice)
         self.layout.addWidget(save_invoice_button)
 
@@ -142,16 +146,22 @@ class InvoiceView(QWidget):
     def load_customers(self):
         self.customer_dropdown.clear()
         customers = Customer.get_all_customers()
-        names = [f"{c.customer_id} - {c.name}" for c in customers]
+        # Show only customer name
+        names = [c.name for c in customers]
         self.customer_dropdown.addItems(names)
         self.customer_completer.setModel(self.customer_dropdown.model())
+        self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.customer_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
 
     def load_products(self):
         self.product_dropdown.clear()
         products = Product.get_all_products()
+        # Show as "ID - Name (GHS price)" for search by both
         names = [f"{p.product_id} - {p.name} (GHS {p.price})" for p in products]
         self.product_dropdown.addItems(names)
         self.product_completer.setModel(self.product_dropdown.model())
+        self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.product_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
 
     def load_invoice_items_table(self):
         self.invoice_items_table.setRowCount(0)
@@ -238,12 +248,18 @@ class InvoiceView(QWidget):
             QMessageBox.warning(self, "Input Error", "Select a customer.")
             return
 
-        customer_id = int(customer_text.split(" - ")[0])
+        # Find customer by name only
+        customer = next((c for c in Customer.get_all_customers() if c.name == customer_text), None)
+        if not customer:
+            QMessageBox.warning(self, "Input Error", "Selected customer not found.")
+            return
+        customer_id = customer.customer_id
         discount = float(self.discount_input.text() or 0)
         tax = float(self.tax_input.text() or 0)
         invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
         QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created.")
         self.reset_invoice_form()
+        self.invoice_created.emit()
 
     def reset_invoice_form(self):
         self.invoice_items_table.setRowCount(0)
@@ -263,5 +279,17 @@ class InvoiceView(QWidget):
             return
         product_name = self.invoice_items_table.item(selected, 0).text()
         quantity = self.invoice_items_table.item(selected, 1).text()
+        # Set product dropdown to match, but do not overwrite text
         self.product_dropdown.setCurrentText(product_name)
+        self.product_dropdown.lineEdit().selectAll()
         self.quantity_input.setText(quantity)
+
+    def _select_all_customer(self):
+        # Only select all if there is a value, and do not set text (prevents clearing)
+        if self.customer_dropdown.currentText():
+            self.customer_dropdown.lineEdit().selectAll()
+
+    def _select_all_product(self):
+        # Only select all if there is a value, and do not set text (prevents clearing)
+        if self.product_dropdown.currentText():
+            self.product_dropdown.lineEdit().selectAll()

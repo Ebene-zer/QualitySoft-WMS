@@ -169,25 +169,17 @@ class ProductView(QWidget):
             QMessageBox.warning(self, "Select Product", "Please select a product to delete.")
             return
         product_id = int(self.product_table.item(selected, 0).text())
-        Product.delete_product(product_id)
-        QMessageBox.information(self, "Success", "Product deleted.")
-        self.clear_inputs()
-        self.load_products()
-
-#      def delete_product(self):
-    #         product_id = self.product_table.currentRow()
-    #         if product_id is None:
-    #             QMessageBox.warning(self, "Select Product", "Please select a product to delete.")
-    #             return
-    #         reply = QMessageBox.question(
-    #             self, "Confirm Delete",
-    #             f"Are you sure you want to delete product {product_id}?",
-    #             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-    #         )
-    #         if reply == QMessageBox.StandardButton.Yes:
-    #             Product.delete_product(product_id)
-    #             QMessageBox.information(self, "Deleted", "Product deleted.")
-    #             self.load_products()
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            f"Are you sure you want to delete this product?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            Product.delete_product(product_id)
+            QMessageBox.information(self, "Success", "Product deleted.")
+            self.clear_inputs()
+            self.load_products()
 
 
 

@@ -88,7 +88,7 @@ class CustomerView(QWidget):
             border: 2px solid #2980b9;
         }
         QPushButton {
-            background-color: #2980b9;
+            background-color: #21618C;
             color: white;
             border: none;
             border-radius: 8px;
