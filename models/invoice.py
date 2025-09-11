@@ -12,7 +12,7 @@ class Invoice:
         self.tax = tax
         self.total_amount = total_amount
 
-#Create Invoice method
+    #Create Invoice method
     @staticmethod
     def create_invoice(customer_id, items, discount=0.0, tax=0.0):
         connection = get_db_connection()
@@ -56,7 +56,7 @@ class Invoice:
         connection.close()
         return invoice_id
 
-#Update Invoice
+    #Update Invoice
     @staticmethod
     def update_invoice(invoice_id, customer_id, items, discount=0.0, tax=0.0):
         connection = get_db_connection()
@@ -108,7 +108,7 @@ class Invoice:
         connection.close()
 
 
-#Delete Invoice
+    #Delete Invoice
     @staticmethod
     def delete_invoice(invoice_id):
         connection = get_db_connection()
@@ -128,7 +128,7 @@ class Invoice:
         connection.close()
 
 
-#Get all Invoice
+    #Get all Invoice
     @staticmethod
     def get_all_invoices():
         connection = get_db_connection()
@@ -141,7 +141,7 @@ class Invoice:
         rows = cursor.fetchall()
         connection.close()
 
-        # Return list of simple objects or namedtuples for attribute access
+        # Return list of simple objects or named tuples for attribute access
         invoices = []
         for row in rows:
             invoice = type('InvoiceRecord', (object,), {})()
@@ -151,7 +151,7 @@ class Invoice:
             invoices.append(invoice)
         return invoices
 
-    #Get Invoice by ID
+    #Get to Invoice by ID
     @staticmethod
     def get_invoice_by_id(invoice_id):
         connection = get_db_connection()
@@ -198,96 +198,97 @@ class Invoice:
 
         return invoice
 
-#Print Receipt Method
-    @staticmethod
-    def print_receipt(invoice_id):
-        invoice = Invoice.get_invoice_by_id(invoice_id)
-        if not invoice:
-            raise ValueError(f"Invoice ID {invoice_id} not found.")
 
-#Receipt Details
-        print(f"\n--- Invoice #{invoice['invoice_id']} ---")
-        print(f"Date: {invoice['invoice_date']}")
-        print(f"Customer: {invoice['customer_name']}")
-        print(f"Discount: GHS {invoice['discount']}")
-        print(f"Tax: GHS {invoice['tax']}")
-        print(f"Total: GHS {invoice['total_amount']}")
-        print("Items:")
-        for item in invoice['items']:
-            print(f" Product: {item['product_name']} | Quantity: {item['quantity']} | Unit Price: GHS {item['unit_price']}")
-        print("-----------------------------\n")
-
-
-#Export receipt to PDF
-    @staticmethod
-    def export_receipt_to_pdf(invoice_id, output_path):
-        from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas
-        from reportlab.platypus import Table, TableStyle
-        from reportlab.lib import colors
-
-        invoice = Invoice.get_invoice_by_id(invoice_id)
-        if not invoice:
-            raise ValueError(f"Invoice ID {invoice_id} not found.")
-
-        c = canvas.Canvas(output_path, pagesize=A4)
-        width, height = A4
-        y = height - 50
-
-        # Header
-        c.setFont("Helvetica-Bold", 20)
-        c.drawString(50, y, "Wholesale Management System")
-        y -= 30
-
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(50, y, f"Invoice #{invoice['invoice_id']}")
-        y -= 25
-
-        c.setFont("Helvetica", 12)
-        c.drawString(50, y, f"Date: {invoice['invoice_date']}")
-        y -= 18
-        c.drawString(50, y, f"Customer: {invoice['customer_name']}")
-        y -= 25
-
-        # Table headers and data
-        table_data = [["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]]
-        for item in invoice['items']:
-            subtotal = item['quantity'] * item['unit_price']
-            table_data.append([
-                item['product_name'],
-                str(item['quantity']),
-                f"{item['unit_price']:.2f}",
-                f"{subtotal:.2f}"
-            ])
-
-        table = Table(table_data, colWidths=[180, 80, 100, 100])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-
-        table.wrapOn(c, width, height)
-        table_height = table._height
-        table.drawOn(c, 50, y - table_height)
-        y -= table_height + 20
-
-        # Totals
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(50, y, f"Discount: GHS {invoice['discount']:.2f}")
-        y -= 18
-        c.drawString(50, y, f"Tax: GHS {invoice['tax']:.2f}")
-        y -= 18
-        c.drawString(50, y, f"Total: GHS {invoice['total_amount']:.2f}")
-        y -= 30
-
-        # Footer
-        c.setFont("Helvetica-Oblique", 10)
-        c.setFillColor(colors.darkgray)
-        c.drawString(50, 30, "Thank you for buying from us!")
-
-        c.save()
+   # #Print Receipt Method
+   #  @staticmethod
+   #  def print_receipt(invoice_id):
+   #      invoice = Invoice.get_invoice_by_id(invoice_id)
+   #      if not invoice:
+   #          raise ValueError(f"Invoice ID {invoice_id} not found.")
+   #
+   #      #Receipt Details
+   #      print(f"\n--- Invoice #{invoice['invoice_id']} ---")
+   #      print(f"Date: {invoice['invoice_date']}")
+   #      print(f"Customer: {invoice['customer_name']}")
+   #      print(f"Discount: GHS {invoice['discount']}")
+   #      print(f"Tax: GHS {invoice['tax']}")
+   #      print(f"Total: GHS {invoice['total_amount']}")
+   #      print("Items:")
+   #      for item in invoice['items']:
+   #          print(f" Product: {item['product_name']} | Quantity: {item['quantity']} | Unit Price: GHS {item['unit_price']}")
+   #      print("-----------------------------\n")
+   #
+   #
+   #  #Export receipt to PDF
+   #  @staticmethod
+   #  def export_receipt_to_pdf(invoice_id, output_path):
+   #      from reportlab.lib.pagesizes import A4
+   #      from reportlab.pdfgen import canvas
+   #      from reportlab.platypus import Table, TableStyle
+   #      from reportlab.lib import colors
+   #
+   #      invoice = Invoice.get_invoice_by_id(invoice_id)
+   #      if not invoice:
+   #          raise ValueError(f"Invoice ID {invoice_id} not found.")
+   #
+   #      c = canvas.Canvas(output_path, pagesize=A4)
+   #      width, height = A4
+   #      y = height - 50
+   #
+   #      # Header
+   #      c.setFont("Helvetica-Bold", 20)
+   #      c.drawString(50, y, "Wholesale Name Here")
+   #      y -= 30
+   #
+   #      c.setFont("Helvetica-Bold", 16)
+   #      c.drawString(50, y, f"Invoice #{invoice['invoice_id']}")
+   #      y -= 25
+   #
+   #      c.setFont("Helvetica", 12)
+   #      c.drawString(50, y, f"Date: {invoice['invoice_date']}")
+   #      y -= 18
+   #      c.drawString(50, y, f"Customer: {invoice['customer_name']}")
+   #      y -= 25
+   #
+   #      # Table headers and data
+   #      table_data = [["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]]
+   #      for item in invoice['items']:
+   #          subtotal = item['quantity'] * item['unit_price']
+   #          table_data.append([
+   #              item['product_name'],
+   #              str(item['quantity']),
+   #              f"{item['unit_price']:.2f}",
+   #              f"{subtotal:.2f}"
+   #          ])
+   #
+   #      table = Table(table_data, colWidths=[180, 80, 100, 100])
+   #      table.setStyle(TableStyle([
+   #          ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+   #          ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+   #          ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+   #          ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+   #          ('FONTSIZE', (0, 0), (-1, 0), 12),
+   #          ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+   #          ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+   #      ]))
+   #
+   #      table.wrapOn(c, width, height)
+   #      table_height = table._height
+   #      table.drawOn(c, 50, y - table_height)
+   #      y -= table_height + 20
+   #
+   #      # Totals
+   #      c.setFont("Helvetica-Bold", 12)
+   #      c.drawString(50, y, f"Discount: GHS {invoice['discount']:.2f}")
+   #      y -= 18
+   #      c.drawString(50, y, f"Tax: GHS {invoice['tax']:.2f}")
+   #      y -= 18
+   #      c.drawString(50, y, f"Total: GHS {invoice['total_amount']:.2f}")
+   #      y -= 30
+   #
+   #      # Footer
+   #      c.setFont("Helvetica-Oblique", 10)
+   #      c.setFillColor(colors.darkgray)
+   #      c.drawString(50, 30, "Thank you for buying from us!")
+   #
+   #      c.save()

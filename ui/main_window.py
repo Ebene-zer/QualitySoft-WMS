@@ -1,18 +1,17 @@
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QLabel, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QMessageBox
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
 )
 from PyQt6.QtGui import QFont
-from PyQt6.QtCore import QDate, Qt
-import datetime
 import sys
 
-from database.db_handler import get_db_connection
+
 from ui.product_view import ProductView
 from ui.customer_view import CustomerView
 from ui.invoice_view import InvoiceView
 from ui.receipt_view import ReceiptView
 from ui.user_view import UserView
 from ui.more import MoreDropdown
+from ui.settings_dialog import SettingsDialog
 
 
 class MainWindow(QWidget):
@@ -20,9 +19,9 @@ class MainWindow(QWidget):
         super().__init__()
         self.logged_in_user = logged_in_user
         self.user_role = role
-        self.setWindowTitle("QUALITYSOFT WHOLESALE MANAGEMENT SYSTEM")
+        self.setWindowTitle("QualitySoft WMS")
         self.resize(1000, 700)
-        self.setMinimumSize(800, 500)
+        self.setMinimumSize(600, 400)
 
         # Set flat background color
         self.setStyleSheet("background-color: #f0f2f5;")
@@ -38,7 +37,7 @@ class MainWindow(QWidget):
         def create_nav_button(text, index, height=40, font_size=10, width=None):
             btn = QPushButton(text)
             btn.setFixedHeight(height)
-            btn.setFont(QFont("Segoe UI", font_size, QFont.Weight.Medium))
+            btn.setFont(QFont("Segue UI", font_size, QFont.Weight.Medium))
             if width:
                 btn.setFixedWidth(width)
             btn.setStyleSheet(self.button_style(normal=True))
@@ -50,27 +49,27 @@ class MainWindow(QWidget):
         btn_more = QPushButton("\u2630")
         btn_more.setFixedHeight(40)
         btn_more.setFixedWidth(40)
-        btn_more.setFont(QFont("Segoe UI", 14, QFont.Weight.Medium))
+        btn_more.setFont(QFont("Segue UI", 14, QFont.Weight.Medium))
         btn_more.setStyleSheet(self.button_style(normal=True))
         btn_more.setToolTip("More")
         btn_more.clicked.connect(lambda: self.switch_view(0))
         button_bar_layout.addWidget(btn_more)
         self.nav_buttons.append(btn_more)
 
-        create_nav_button("Products", 1, 40, 10)
-        create_nav_button("Customers", 2, 40, 10)
-        create_nav_button("Create Invoice", 3, 40, 10)
-        create_nav_button("Receipts", 4, 40, 10)
+        create_nav_button("Products", 1, 40, 11)
+        create_nav_button("Customers", 2, 40, 11)
+        create_nav_button("Invoice", 3, 40, 11)
+        create_nav_button("Receipts", 4, 40,  11)
 
         # Track the index for the Users tab
         users_tab_index = 5
         if self.user_role.lower() in ["admin", "ceo"]:
-            create_nav_button("Users", 5, 40, 10)
+            create_nav_button("Users", 5, 40, 11)
             users_tab_index = 6
 
         btn_logout = QPushButton("Logout")
         btn_logout.setFixedHeight(40)
-        btn_logout.setFont(QFont("Segoe UI", 10, QFont.Weight.Medium))
+        btn_logout.setFont(QFont("Segue UI", 11, QFont.Weight.Medium))
         btn_logout.setStyleSheet("""
             QPushButton {
                 background-color: orange;
@@ -85,6 +84,16 @@ class MainWindow(QWidget):
         btn_logout.clicked.connect(self.logout)
         button_bar_layout.addWidget(btn_logout)
 
+        # Only show Settings button for Admin and CEO
+        if self.user_role.lower() in ["admin", "ceo"]:
+            btn_settings = QPushButton("Settings")
+            btn_settings.setFixedHeight(40)
+            btn_settings.setFont(QFont("Segue UI", 11, QFont.Weight.Medium))
+            btn_settings.setStyleSheet("background-color: #3498db; color: white; border-radius: 6px; padding: 8px 14px;")
+            btn_settings.clicked.connect(self.open_settings_dialog)
+            button_bar_layout.addWidget(btn_settings)
+            self.nav_buttons.append(btn_settings)
+
         main_layout.addLayout(button_bar_layout)
 
         # Central stacked widget
@@ -96,6 +105,7 @@ class MainWindow(QWidget):
         more_layout.addWidget(self.more_dropdown_widget)
         more_tab.setLayout(more_layout)
         self.stacked_widget.addWidget(more_tab)
+
         self.product_view = ProductView()
         self.customer_view = CustomerView()
         self.invoice_view = InvoiceView()
@@ -109,11 +119,11 @@ class MainWindow(QWidget):
         main_layout.addWidget(self.stacked_widget)
         self.setLayout(main_layout)
 
-        # Connect invoice_created signal to refresh sales report if open
+        # Connect invoice_created signal to refresh a sales report if open
         self.invoice_view.invoice_created.connect(self.refresh_more_features_dialog)
         self.more_features_dialog = None
 
-        # Set first button as active
+        # Set the first button as active
         self.switch_view(3)
 
     def button_style(self, normal=True):
@@ -171,6 +181,10 @@ class MainWindow(QWidget):
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()
+
+    def open_settings_dialog(self):
+        dialog = SettingsDialog(self)
+        dialog.exec()
 
     def refresh_more_features_dialog(self):
         # No longer needed

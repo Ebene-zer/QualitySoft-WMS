@@ -1,7 +1,7 @@
-# Wholesale-management-System
+# QualitySoft WMS 
 # Dev: Ebenezer Fuachie
 
-# Dev Period: 08/04/2025 - Till Date
+# Dev Start: 08/04/2025
 
 
 1. Project Overview

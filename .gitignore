@@ -70,8 +70,11 @@ Pipfile.lock
 /testes/
 test_wholesale.db
 
-# Local SQLite database
+# Sensitive and private files
 wholesale.db
+utils/generate_pin.py
+backup/
+testes/wholesale.db
 
 # PDF and other generated files
 *.pdf

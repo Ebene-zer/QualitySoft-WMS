@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QDialog, QFormLayout, QComboBox, QDialogButtonBox, QMessageBox, QVBoxLayout, QLabel, QWidget, QPushButton, QHBoxLayout
+from PyQt6.QtWidgets import QFormLayout, QComboBox, QVBoxLayout, QLabel, QWidget, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt, QTimer
 import datetime
 from database.db_handler import get_db_connection
@@ -198,7 +198,7 @@ class MoreDropdown(QWidget):
 
         # --- ADD THIS: Show the default widget on startup ---
         QTimer.singleShot(0, lambda: self._on_index_changed(self.dropdown.currentIndex()))
-        # ----------------------------------------------------
+
 
     def _on_index_changed(self, index):
         # Clear content area

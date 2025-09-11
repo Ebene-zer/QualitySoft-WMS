@@ -1,9 +1,7 @@
-#Import the necessary libraries/frameworks
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QPushButton, QListWidget, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
+    QWidget, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
 )
 
-from database.db_handler import get_db_connection
 from models.product import Product
 
 #Product View Class
@@ -68,9 +66,9 @@ class ProductView(QWidget):
     def get_stylesheet(self):
         return """
         QWidget {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+            background: interlinear(x1:0, y1:0, x2:1, y2:1,
                         stop:0 #eef2f3, stop:1 #8e9eab);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segue UI', Tahoma, Geneva, Verdana, sans-serif;
             font-size: 14px;
             color: #2c3e50;
         }
@@ -183,7 +181,7 @@ class ProductView(QWidget):
 
 
 
-#Clear Input Fields
+    #Clear Input Fields
     def clear_inputs(self):
         self.name_input.clear()
         self.price_input.clear()
@@ -202,4 +200,4 @@ class ProductView(QWidget):
         low_stock_products = Product.get_products_below_stock(10)
         if low_stock_products:
             product_names = ", ".join([f"{p.name} (Stock: {p.stock_quantity})" for p in low_stock_products])
-            QMessageBox.warning(self, "Low Stock Alert", f"The following products have low stock:\n{product_names}")
+            QMessageBox.warning(self, "Low Stock Alert", f"The following products have low stock quantity:\n{product_names}")

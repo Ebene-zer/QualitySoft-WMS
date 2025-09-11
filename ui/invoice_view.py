@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox,
+    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QMessageBox,
     QComboBox, QCompleter, QTableWidget, QTableWidgetItem, QHBoxLayout
 )
 from PyQt6.QtCore import Qt, QObject, QEvent, pyqtSignal
@@ -68,7 +68,7 @@ class InvoiceView(QWidget):
         button_layout.addWidget(delete_item_button)
         self.layout.addLayout(button_layout)
 
-        # Invoice Items Table (replaces invoice_items_list)
+        # Invoice Items Table
         self.invoice_items_table = QTableWidget()
         self.invoice_items_table.setColumnCount(4)
         self.invoice_items_table.setHorizontalHeaderLabels(["Product", "Quantity", "Unit Price", "Total"])
@@ -79,15 +79,17 @@ class InvoiceView(QWidget):
 
         # Discount and Tax Inputs
         self.discount_input = QLineEdit()
-        self.discount_input.setPlaceholderText("Discount (GHS)")
+        self.discount_input.setPlaceholderText("Discount (GH¢)")
+        self.discount_input.textChanged.connect(self.handle_discount_input)
         self.layout.addWidget(self.discount_input)
 
         self.tax_input = QLineEdit()
-        self.tax_input.setPlaceholderText("Tax (GHS)")
+        self.tax_input.setPlaceholderText("Tax (GH¢)")
+        self.tax_input.textChanged.connect(self.handle_tax_input)
         self.layout.addWidget(self.tax_input)
 
         # Total Label
-        self.total_label = QLabel("Total: GHS 0.00")
+        self.total_label = QLabel("Total: GH¢ 0.00")
         self.layout.addWidget(self.total_label)
 
         # Save Invoice Button
@@ -146,8 +148,8 @@ class InvoiceView(QWidget):
     def load_customers(self):
         self.customer_dropdown.clear()
         customers = Customer.get_all_customers()
-        # Show only customer name
-        names = [c.name for c in customers]
+        # Show customer name and contact
+        names = [f"{c.name} - {c.phone_number}" for c in customers]
         self.customer_dropdown.addItems(names)
         self.customer_completer.setModel(self.customer_dropdown.model())
         self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
@@ -157,7 +159,7 @@ class InvoiceView(QWidget):
         self.product_dropdown.clear()
         products = Product.get_all_products()
         # Show as "ID - Name (GHS price)" for search by both
-        names = [f"{p.product_id} - {p.name} (GHS {p.price})" for p in products]
+        names = [f"{p.product_id} - {p.name} (GH¢ {p.price})" for p in products]
         self.product_dropdown.addItems(names)
         self.product_completer.setModel(self.product_dropdown.model())
         self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
@@ -233,10 +235,16 @@ class InvoiceView(QWidget):
 
     def update_total(self):
         subtotal = sum(item['quantity'] * item['unit_price'] for item in self.items)
-        discount = float(self.discount_input.text() or 0)
-        tax = float(self.tax_input.text() or 0)
+        try:
+            discount = float(self.discount_input.text() or 0)
+        except ValueError:
+            discount = 0.0
+        try:
+            tax = float(self.tax_input.text() or 0)
+        except ValueError:
+            tax = 0.0
         total = subtotal - discount + tax
-        self.total_label.setText(f"Total: GHS {total:.2f}")
+        self.total_label.setText(f"Total: GH¢ {total:,.2f}")
 
     def save_invoice(self):
         if not self.items:
@@ -248,14 +256,21 @@ class InvoiceView(QWidget):
             QMessageBox.warning(self, "Input Error", "Select a customer.")
             return
 
-        # Find customer by name only
         customer = next((c for c in Customer.get_all_customers() if c.name == customer_text), None)
         if not customer:
             QMessageBox.warning(self, "Input Error", "Selected customer not found.")
             return
         customer_id = customer.customer_id
-        discount = float(self.discount_input.text() or 0)
-        tax = float(self.tax_input.text() or 0)
+        try:
+            discount = float(self.discount_input.text() or 0)
+        except ValueError:
+            QMessageBox.warning(self, "Input Error", "Enter a valid discount value.")
+            return
+        try:
+            tax = float(self.tax_input.text() or 0)
+        except ValueError:
+            QMessageBox.warning(self, "Input Error", "Enter a valid tax value.")
+            return
         invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
         QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created.")
         self.reset_invoice_form()
@@ -265,7 +280,7 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setRowCount(0)
         self.discount_input.clear()
         self.tax_input.clear()
-        self.total_label.setText("Total: GHS 0.00")
+        self.total_label.setText("Total: GH¢ 0.00")
         self.items = []
         self.load_products()
         self.load_customers()
@@ -290,6 +305,22 @@ class InvoiceView(QWidget):
             self.customer_dropdown.lineEdit().selectAll()
 
     def _select_all_product(self):
-        # Only select all if there is a value, and do not set text (prevents clearing)
+        # Only select all if there is a value, and do not set a text (prevents clearing)
         if self.product_dropdown.currentText():
             self.product_dropdown.lineEdit().selectAll()
+
+    def handle_discount_input(self):
+        text = self.discount_input.text()
+        try:
+            value = float(text) if text else 0.0
+            self.discount_input.setStyleSheet("")
+        except ValueError:
+            self.discount_input.setStyleSheet("background-color: #ffcccc;")
+
+    def handle_tax_input(self):
+        text = self.tax_input.text()
+        try:
+            value = float(text) if text else 0.0
+            self.tax_input.setStyleSheet("")
+        except ValueError:
+            self.tax_input.setStyleSheet("background-color: #ffcccc;")

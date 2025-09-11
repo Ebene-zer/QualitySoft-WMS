@@ -1,6 +1,6 @@
 #Import Framework and Library
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QHBoxLayout, QComboBox, QFrame
+    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QComboBox, QFrame
 )
 from models.user import User
 import sqlite3
@@ -8,8 +8,9 @@ from database.db_handler import get_db_connection
 
 #User View Class
 class UserView(QWidget):
-    def __init__(self):
+    def __init__(self, current_user_role="Manager"):
         super().__init__()
+        self.current_user_role = current_user_role
         #UserView Style
         self.setStyleSheet("""
               QWidget {
@@ -62,7 +63,11 @@ class UserView(QWidget):
         role_layout = QVBoxLayout()
         role_label = QLabel("Access Level:")
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["Manager", "CEO", "Admin"])
+        # Only allow 'Admin' option if the current user is admin
+        if self.current_user_role == "Admin":
+            self.role_combo.addItems(["Manager", "CEO", "Admin"])
+        else:
+            self.role_combo.addItems(["Manager", "CEO"])
         role_layout.addWidget(role_label)
         role_layout.addWidget(self.role_combo)
         self.layout.addLayout(role_layout)
@@ -111,6 +116,9 @@ class UserView(QWidget):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
         role = self.role_combo.currentText()
+        if role == "Admin" and self.current_user_role != "Admin":
+            QMessageBox.warning(self, "Permission Denied", "Only Admin can add another Admin user.")
+            return
 
         if not username or not password:
             QMessageBox.warning(self, "Input Error", "Username and password cannot be empty.")
@@ -127,7 +135,7 @@ class UserView(QWidget):
 
     # Populate fields with user data for editing
     def populate_user_fields(self, item):
-        # Defensive: Ensure item has expected format
+        # Defensive: Ensure item has the expected format
         text = item.text()
         if " (" not in text:
             QMessageBox.warning(self, "Error", "Selected item format is invalid.")
@@ -148,9 +156,18 @@ class UserView(QWidget):
     def update_user(self):
         selected_item = self.user_list.currentItem()
         if not selected_item:
-            QMessageBox.warning(self, "Select User", "Please select a user to update.")
             return
-        old_username = selected_item.text().split(" (")[0]
+        username = selected_item.text().split(" (")[0]
+        role = self.role_combo.currentText()
+        # Prevent editing Admin details unless the current user is Admin
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT role FROM users WHERE username=?", (username,))
+        user_role = cursor.fetchone()
+        connection.close()
+        if user_role and user_role[0] == "Admin" and self.current_user_role != "Admin":
+            QMessageBox.warning(self, "Permission Denied", "Only Admin can edit Admin user details.")
+            return
         new_username = self.username_input.text().strip()
         new_password = self.password_input.text().strip()
         new_role = self.role_combo.currentText()
@@ -158,8 +175,8 @@ class UserView(QWidget):
             QMessageBox.warning(self, "Input Error", "Username and password cannot be empty.")
             return
         try:
-            User.update_user(old_username, new_username, new_password, new_role)
-            QMessageBox.information(self, "Success", f"User '{old_username}' updated.")
+            User.update_user(username, new_username, new_password, new_role)
+            QMessageBox.information(self, "Success", f"User '{username}' updated.")
             self.load_users()
             self.username_input.clear()
             self.password_input.clear()
@@ -173,10 +190,17 @@ class UserView(QWidget):
         if not selected_item:
             QMessageBox.warning(self, "Select User", "Please select a user to delete.")
             return
-
-        username = selected_item.text().split(" (")[0]  # Cleanly extract username
+        username = selected_item.text().split(" (" )[0]
+        # Check if target user is Admin
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT role FROM users WHERE username = ?", (username,))
+        user_role = cursor.fetchone()
+        connection.close()
+        if user_role and user_role[0] == "Admin" and self.current_user_role != "Admin":
+            QMessageBox.warning(self, "Permission Denied", "Only Admin can delete Admin user.")
+            return
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete user '{username}'?")
-
         if confirm == QMessageBox.StandardButton.Yes:
             connection = get_db_connection()
             cursor = connection.cursor()

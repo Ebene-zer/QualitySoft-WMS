@@ -69,5 +69,31 @@ def initialize_database():
         )
     """)
 
+    # Create license table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS license (
+            id INTEGER PRIMARY KEY,
+            trial_start TEXT,
+            product_pin TEXT,
+            trial_days INTEGER
+        )
+    """)
+    # Insert default license row if not exists
+    cursor.execute("SELECT COUNT(*) FROM license")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO license (id, trial_start, product_pin, trial_days) VALUES (1, DATE('now'), '', 14)")
+
+    # Create settings table for wholesale number
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY,
+            wholesale_number TEXT
+        )
+    """)
+    # Insert default wholesale number if not exists
+    cursor.execute("SELECT COUNT(*) FROM settings")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO settings (id, wholesale_number) VALUES (1, '')")
+
     connection.commit()
     connection.close()

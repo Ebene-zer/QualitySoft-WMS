@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QComboBox, QHBoxLayout
 )
-from PyQt6.QtGui import QFont, QIcon, QMovie, QColor, QPalette
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtCore import Qt, QSize
 from models.user import User
 from ui.main_window import MainWindow
@@ -10,7 +10,7 @@ from ui.main_window import MainWindow
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("QUALITYSOFT WMS - Login")
+        self.setWindowTitle("Login")
         self.resize(450, 300)
         self.setMinimumSize(350, 250)
 
@@ -45,7 +45,7 @@ class LoginWindow(QWidget):
 
         layout = QVBoxLayout()
 
-        title = QLabel("Welcome to WMS")
+        title = QLabel("Welcome to QualitySoft WMS")
         title.setFont(QFont("Arial", 22,QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -101,21 +101,24 @@ class LoginWindow(QWidget):
         selected_role = self.role_combo.currentText()
 
         if not username or not password:
-            QMessageBox.warning(self, "Missing Info", "Please fill in both username and password.")
+            QMessageBox.warning(self, "Missing Info", "Please Enter username and password.")
             return
 
-        role = User.authenticate(username, password)
-        if role:
-            if role != selected_role:
-                QMessageBox.warning(self, "Access Denied", f"This account belongs to a {role}, not {selected_role}.")
-                return
+        try:
+            role = User.authenticate(username, password)
+            if role:
+                if role != selected_role:
+                    QMessageBox.warning(self, "Access Denied", f"This is not {selected_role} account.")
+                    return
 
-            self.main_window = MainWindow(username, role)
-            self.main_window.show()
-            self.close()
-        else:
-            QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
-
+                self.main_window = MainWindow(username, role)
+                self.main_window.show()
+                self.close()
+            else:
+                QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred during login: {e} \n"
+                                                f"Contact Developer if problem persist.")
 
 
     def toggle_password_visibility(self):

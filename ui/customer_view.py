@@ -1,17 +1,13 @@
-#Import Libraries and Framework
-from PyQt6.QtGui import QIntValidator
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
 )
-from models.customer import Customer #Bring the Customer class to use
+from models.customer import Customer
 
 
 class CustomerView(QWidget):
     def __init__(self):
         super().__init__()
-     #   self.setWindowTitle("Customer Management") #Tab name
         self.setStyleSheet(self.get_stylesheet())
-      #  self.setMinimumSize(600, 400)
 
         self.layout = QVBoxLayout()
 
@@ -68,9 +64,9 @@ class CustomerView(QWidget):
     def get_stylesheet(self):
         return """
         QWidget {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+            background: interlinear(x1:0, y1:0, x2:1, y2:1,
                         stop:0 #eef2f3, stop:1 #8e9eab);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segue UI', Tahoma, Geneva, Verdana, sans-serif;
             font-size: 14px;
             color: #2c3e50;
         }
@@ -161,7 +157,7 @@ class CustomerView(QWidget):
             return
 
         Customer.update_customer(customer_id, name, phone_number, address)
-        QMessageBox.information(self, "Success", "Customer updated.")
+        QMessageBox.information(self, "Success", "Customer details updated.")
         self.load_customers()
         self.clear_inputs()
 
