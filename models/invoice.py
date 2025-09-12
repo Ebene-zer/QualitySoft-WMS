@@ -198,97 +198,148 @@ class Invoice:
 
         return invoice
 
+    @staticmethod
+    def get_wholesale_name():
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT wholesale_name FROM settings WHERE id=1")
+            result = cur.fetchone()
+            conn.close()
+            if result and result[0]:
+                return result[0]
+            return "Wholesale Name Here"
+        except Exception:
+            return "Wholesale Name Here"
 
-   # #Print Receipt Method
-   #  @staticmethod
-   #  def print_receipt(invoice_id):
-   #      invoice = Invoice.get_invoice_by_id(invoice_id)
-   #      if not invoice:
-   #          raise ValueError(f"Invoice ID {invoice_id} not found.")
-   #
-   #      #Receipt Details
-   #      print(f"\n--- Invoice #{invoice['invoice_id']} ---")
-   #      print(f"Date: {invoice['invoice_date']}")
-   #      print(f"Customer: {invoice['customer_name']}")
-   #      print(f"Discount: GHS {invoice['discount']}")
-   #      print(f"Tax: GHS {invoice['tax']}")
-   #      print(f"Total: GHS {invoice['total_amount']}")
-   #      print("Items:")
-   #      for item in invoice['items']:
-   #          print(f" Product: {item['product_name']} | Quantity: {item['quantity']} | Unit Price: GHS {item['unit_price']}")
-   #      print("-----------------------------\n")
-   #
-   #
-   #  #Export receipt to PDF
-   #  @staticmethod
-   #  def export_receipt_to_pdf(invoice_id, output_path):
-   #      from reportlab.lib.pagesizes import A4
-   #      from reportlab.pdfgen import canvas
-   #      from reportlab.platypus import Table, TableStyle
-   #      from reportlab.lib import colors
-   #
-   #      invoice = Invoice.get_invoice_by_id(invoice_id)
-   #      if not invoice:
-   #          raise ValueError(f"Invoice ID {invoice_id} not found.")
-   #
-   #      c = canvas.Canvas(output_path, pagesize=A4)
-   #      width, height = A4
-   #      y = height - 50
-   #
-   #      # Header
-   #      c.setFont("Helvetica-Bold", 20)
-   #      c.drawString(50, y, "Wholesale Name Here")
-   #      y -= 30
-   #
-   #      c.setFont("Helvetica-Bold", 16)
-   #      c.drawString(50, y, f"Invoice #{invoice['invoice_id']}")
-   #      y -= 25
-   #
-   #      c.setFont("Helvetica", 12)
-   #      c.drawString(50, y, f"Date: {invoice['invoice_date']}")
-   #      y -= 18
-   #      c.drawString(50, y, f"Customer: {invoice['customer_name']}")
-   #      y -= 25
-   #
-   #      # Table headers and data
-   #      table_data = [["Product", "Quantity", "Unit Price (GHS)", "Subtotal (GHS)"]]
-   #      for item in invoice['items']:
-   #          subtotal = item['quantity'] * item['unit_price']
-   #          table_data.append([
-   #              item['product_name'],
-   #              str(item['quantity']),
-   #              f"{item['unit_price']:.2f}",
-   #              f"{subtotal:.2f}"
-   #          ])
-   #
-   #      table = Table(table_data, colWidths=[180, 80, 100, 100])
-   #      table.setStyle(TableStyle([
-   #          ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-   #          ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-   #          ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-   #          ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-   #          ('FONTSIZE', (0, 0), (-1, 0), 12),
-   #          ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-   #          ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-   #      ]))
-   #
-   #      table.wrapOn(c, width, height)
-   #      table_height = table._height
-   #      table.drawOn(c, 50, y - table_height)
-   #      y -= table_height + 20
-   #
-   #      # Totals
-   #      c.setFont("Helvetica-Bold", 12)
-   #      c.drawString(50, y, f"Discount: GHS {invoice['discount']:.2f}")
-   #      y -= 18
-   #      c.drawString(50, y, f"Tax: GHS {invoice['tax']:.2f}")
-   #      y -= 18
-   #      c.drawString(50, y, f"Total: GHS {invoice['total_amount']:.2f}")
-   #      y -= 30
-   #
-   #      # Footer
-   #      c.setFont("Helvetica-Oblique", 10)
-   #      c.setFillColor(colors.darkgray)
-   #      c.drawString(50, 30, "Thank you for buying from us!")
-   #
-   #      c.save()
+    @staticmethod
+    def get_wholesale_address():
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT wholesale_address FROM settings WHERE id=1")
+            result = cur.fetchone()
+            conn.close()
+            if result and result[0]:
+                return result[0]
+            return ""
+        except Exception:
+            return ""
+
+    @staticmethod
+    def format_receipt_data(invoice, wholesale_number=None, wholesale_address=None):
+        if wholesale_number is None:
+            wholesale_number = Invoice.get_wholesale_name()
+        if wholesale_address is None:
+            wholesale_address = Invoice.get_wholesale_address()
+        """
+        Returns all formatted data needed for receipt PDF export and UI display.
+        """
+        invoice_number = invoice.get("invoice_id", "")
+        invoice_date = invoice.get("invoice_date", "")
+        customer_name = invoice.get("customer_name", "")
+        customer_number = invoice.get("customer_number", "N/A")
+        # Defensive extraction of contact number
+        contact_number = str(wholesale_number)
+        if contact_number.lower().startswith('wholesale contact:'):
+            contact_number = contact_number[18:]
+        wholesale_contact = f"Wholesale Contact: {contact_number}"
+        items = [
+            [
+                item["product_name"],
+                str(item["quantity"]),
+                f"{item['unit_price']:.2f}",
+                f"{item['quantity'] * item['unit_price']:.2f}"
+            ]
+            for item in invoice["items"]
+        ]
+        total_items = sum(item['quantity'] for item in invoice["items"])
+        discount = f"{invoice.get('discount', 0):.2f}"
+        tax = f"{invoice.get('tax', 0):.2f}"
+        total = f"{invoice.get('total_amount', 0):.2f}"
+        return {
+            "invoice_number": invoice_number,
+            "invoice_date": invoice_date,
+            "customer_name": customer_name,
+            "customer_number": customer_number,
+            "wholesale_contact": contact_number,
+            "wholesale_address": wholesale_address,
+            "items": items,
+            "total_items": total_items,
+            "discount": discount,
+            "tax": tax,
+            "total": total
+        }
+
+    @staticmethod
+    def export_receipt_to_pdf(formatted_data, file_path):
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.units import mm
+        doc = SimpleDocTemplate(file_path, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        styles = getSampleStyleSheet()
+        elements = []
+        title_style = ParagraphStyle(
+            name="Title",
+            parent=styles["Title"],
+            alignment=1,
+            fontSize=18,
+            leading=22,
+            spaceAfter=10,
+            fontName="Helvetica-Bold"
+        )
+        elements.append(Paragraph(Invoice.get_wholesale_name(), title_style))
+        # Minimal font for contact and address
+        contact_address_style = ParagraphStyle(
+            name="ContactAddress",
+            parent=styles["Normal"],
+            alignment=1,
+            fontSize=10,
+            textColor=colors.darkgray,
+            spaceAfter=8,
+        )
+        contact_line = f"Contact: {formatted_data.get('wholesale_contact', '')} | Location: {formatted_data.get('wholesale_address', '')}"
+        elements.append(Paragraph(contact_line, contact_address_style))
+        elements.append(Paragraph(f"Invoice Number: {formatted_data['invoice_number']}", styles["Normal"]))
+        elements.append(Paragraph(f"Date: {formatted_data['invoice_date']}", styles["Normal"]))
+        elements.append(Paragraph(f"Customer Name: {formatted_data['customer_name']}", styles["Normal"]))
+        elements.append(Paragraph(f"Customer Number: {formatted_data['customer_number']}", styles["Normal"]))
+        elements.append(Spacer(1, 12))
+        table_data = [
+            ["Product", "Quantity", "Unit Price (GH¢)", "Subtotal (GH¢)"]
+        ] + formatted_data['items']
+        table_data.append(["", f"Total Items: {formatted_data['total_items']}", "", ""])
+        table = Table(table_data, colWidths=[60*mm, 30*mm, 40*mm, 40*mm])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightblue),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+            ("TOPPADDING", (0, 0), (-1, 0), 8),
+            ("BOTTOMPADDING", (0, 1), (-1, -2), 6),
+            ("TOPPADDING", (0, 1), (-1, -2), 6),
+            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ("BACKGROUND", (0, -1), (-1, -1), colors.whitesmoke),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 16))
+        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=400)
+        elements.append(Paragraph(f"Discount: GH¢ {formatted_data['discount']}", summary_style))
+        elements.append(Paragraph(f"Tax: GH¢ {formatted_data['tax']}", summary_style))
+        elements.append(Paragraph(f"Total: GH¢ {formatted_data['total']}", summary_style))
+        elements.append(Spacer(1, 30))
+        footer_style = ParagraphStyle(
+            name="Footer",
+            parent=styles["Normal"],
+            alignment=1,
+            fontSize=11,
+            textColor=colors.grey,
+            spaceBefore=40
+        )
+        elements.append(Spacer(1, 60))
+        elements.append(Paragraph("Thank you for buying from us!", footer_style))
+        doc.build(elements)

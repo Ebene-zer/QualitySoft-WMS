@@ -72,16 +72,41 @@ test_wholesale.db
 
 # Sensitive and private files
 wholesale.db
-utils/generate_pin.py
-backup/
-testes/wholesale.db
+*.db
+*.sqlite
+*.sqlite3
+*.pyc
+__pycache__/
+*.log
+*.bak
+*.tmp
+*.env
+*.DS_Store
+*.pkl
+*.json
 
-# PDF and other generated files
-*.pdf
+# IDE and editor folders
+.vscode/
+.idea/
+
+# Test files and test databases
+testes/
+test_*.db
+
+# Animation and backup
+anime/
+backup/
 
 # System files
-.DS_Store
 Thumbs.db
 
-# .gitignore for backup folder
-backup/
+# Do not commit license keys, secrets, or config files
+secret*
+config*
+
+# Ignore all files in backup and anime folders
+backup/*
+anime/*
+
+# Utility scripts (do not commit pin generator)
+utils/generate_pin.py

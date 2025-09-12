@@ -83,17 +83,29 @@ def initialize_database():
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO license (id, trial_start, product_pin, trial_days) VALUES (1, DATE('now'), '', 14)")
 
-    # Create settings table for wholesale number
+    # Create settings table for wholesale number, name, and address
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY,
-            wholesale_number TEXT
+            wholesale_number TEXT,
+            wholesale_name TEXT,
+            wholesale_address TEXT
         )
     """)
-    # Insert default wholesale number if not exists
+    # Insert default wholesale number, name, and address if not exists
     cursor.execute("SELECT COUNT(*) FROM settings")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO settings (id, wholesale_number) VALUES (1, '')")
+        cursor.execute("INSERT INTO settings (id, wholesale_number, wholesale_name, wholesale_address) VALUES (1, '', 'Wholesale Name Here', '')")
+
+    # Check if wholesale_name and wholesale_address columns exist, add if missing
+    cursor.execute("PRAGMA table_info(settings)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if "wholesale_name" not in columns:
+        cursor.execute("ALTER TABLE settings ADD COLUMN wholesale_name TEXT")
+        cursor.execute("UPDATE settings SET wholesale_name='Wholesale Name Here' WHERE id=1")
+    if "wholesale_address" not in columns:
+        cursor.execute("ALTER TABLE settings ADD COLUMN wholesale_address TEXT")
+        cursor.execute("UPDATE settings SET wholesale_address='' WHERE id=1")
 
     connection.commit()
     connection.close()
