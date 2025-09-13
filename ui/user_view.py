@@ -63,11 +63,9 @@ class UserView(QWidget):
         role_layout = QVBoxLayout()
         role_label = QLabel("Access Level:")
         self.role_combo = QComboBox()
-        # Only allow 'Admin' option if the current user is admin
-        if self.current_user_role == "Admin":
-            self.role_combo.addItems(["Manager", "CEO", "Admin"])
-        else:
-            self.role_combo.addItems(["Manager", "CEO"])
+        # Include all roles so Admin users and Admin accounts can be viewed.
+        # Permission checks later will prevent non-Admins from creating/editing/deleting Admin users.
+        self.role_combo.addItems(["Manager", "CEO", "Admin"])
         role_layout.addWidget(role_label)
         role_layout.addWidget(self.role_combo)
         self.layout.addLayout(role_layout)
@@ -116,7 +114,8 @@ class UserView(QWidget):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
         role = self.role_combo.currentText()
-        if role == "Admin" and self.current_user_role != "Admin":
+        # Compare roles case-insensitively to avoid mismatch when role strings differ in case
+        if role.lower() == "admin" and str(self.current_user_role).lower() != "admin":
             QMessageBox.warning(self, "Permission Denied", "Only Admin can add another Admin user.")
             return
 
@@ -149,9 +148,12 @@ class UserView(QWidget):
         if user:
             self.username_input.setText(user[0])
             self.password_input.clear()  # Do not show password hash
+            # Ensure the role exists in the combo box (in case roles list changes elsewhere)
+            if self.role_combo.findText(user[1]) == -1:
+                self.role_combo.addItem(user[1])
             self.role_combo.setCurrentText(user[1])
         else:
-            QMessageBox.warning(self, "Error", f"User '{username}' not found in database.")
+             QMessageBox.warning(self, "Error", f"User '{username}' not found in database.")
 
     def update_user(self):
         selected_item = self.user_list.currentItem()
@@ -165,7 +167,7 @@ class UserView(QWidget):
         cursor.execute("SELECT role FROM users WHERE username=?", (username,))
         user_role = cursor.fetchone()
         connection.close()
-        if user_role and user_role[0] == "Admin" and self.current_user_role != "Admin":
+        if user_role and str(user_role[0]).lower() == "admin" and str(self.current_user_role).lower() != "admin":
             QMessageBox.warning(self, "Permission Denied", "Only Admin can edit Admin user details.")
             return
         new_username = self.username_input.text().strip()
@@ -197,7 +199,7 @@ class UserView(QWidget):
         cursor.execute("SELECT role FROM users WHERE username = ?", (username,))
         user_role = cursor.fetchone()
         connection.close()
-        if user_role and user_role[0] == "Admin" and self.current_user_role != "Admin":
+        if user_role and str(user_role[0]).lower() == "admin" and str(self.current_user_role).lower() != "admin":
             QMessageBox.warning(self, "Permission Denied", "Only Admin can delete Admin user.")
             return
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete user '{username}'?")

@@ -10,6 +10,13 @@ class Customer:
 #Add customer method/function
     @staticmethod
     def add_customer(name, phone_number, address):
+        # Model-level validation
+        if not name or not name.strip():
+            raise ValueError("Customer name is required.")
+        if not address or not address.strip():
+            raise ValueError("Address is required.")
+        if phone_number and not (phone_number.isdigit() and len(phone_number) == 10):
+            raise ValueError("Phone number must be 10 digits.")
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
@@ -22,6 +29,13 @@ class Customer:
 #Update existing customer's details
     @staticmethod
     def update_customer(customer_id, name, phone_number, address):
+        # Model-level validation
+        if not name or not name.strip():
+            raise ValueError("Customer name is required.")
+        if not address or not address.strip():
+            raise ValueError("Address is required.")
+        if phone_number and not (phone_number.isdigit() and len(phone_number) == 10):
+            raise ValueError("Phone number must be 10 digits.")
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
@@ -49,8 +63,10 @@ class Customer:
     def get_all_customers():
         connection = get_db_connection()
         cursor = connection.cursor()
+        # Return customers ordered A-Z by name (case-insensitive)
         cursor.execute("""
             SELECT customer_id, name, phone_number, address FROM customers
+            ORDER BY name COLLATE NOCASE
         """)
         rows = cursor.fetchall()
         connection.close()

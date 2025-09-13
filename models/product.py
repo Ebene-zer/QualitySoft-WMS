@@ -49,9 +49,11 @@ class Product:
     def get_all_products():
         connection = get_db_connection()
         cursor = connection.cursor()
+        # Return products ordered A-Z by name (case-insensitive)
         cursor.execute("""
             SELECT product_id, name, price, stock_quantity
             FROM products
+            ORDER BY name COLLATE NOCASE
         """)
         rows = cursor.fetchall()
         connection.close()
@@ -103,3 +105,4 @@ class Product:
         rows = cursor.fetchall()
         connection.close()
         return [Product(*row) for row in rows]
+

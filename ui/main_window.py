@@ -110,7 +110,8 @@ class MainWindow(QWidget):
         self.customer_view = CustomerView()
         self.invoice_view = InvoiceView()
         self.receipt_view = ReceiptView()
-        self.user_view = UserView()
+        # Pass the logged-in user's role so UserView enforces permissions correctly
+        self.user_view = UserView(current_user_role=self.user_role)
         self.stacked_widget.addWidget(self.product_view)
         self.stacked_widget.addWidget(self.customer_view)
         self.stacked_widget.addWidget(self.invoice_view)

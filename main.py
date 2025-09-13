@@ -43,7 +43,8 @@ class PinDialog(QDialog):
             if check_product_pin(pin):
                 # Reset trial period after valid pin entry
                 set_license_field("trial_days", 14)
-                set_license_field("trial_start", datetime.now().strftime("%Y-%m-%d"))
+                # Store trial_start in Day/Month/Year format
+                set_license_field("trial_start", datetime.now().strftime("%d/%m/%Y"))
                 self.pin_valid = True
                 self.accept()
             else:

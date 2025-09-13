@@ -20,7 +20,17 @@ def set_license_field(field, value):
 
 def is_trial_expired():
     trial_start, _, trial_days = get_license_row()
-    start_date = datetime.strptime(trial_start, "%Y-%m-%d")
+    # Support both Day/Month/Year and ISO Year-Month-Day stored formats for backward compatibility
+    start_date = None
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            start_date = datetime.strptime(trial_start, fmt)
+            break
+        except Exception:
+            continue
+    if start_date is None:
+        # If parsing fails, treat as expired to be safe
+        return True
     return (datetime.now() - start_date).days >= int(trial_days)
 
 def generate_product_pin(length=8):
@@ -39,7 +49,8 @@ def set_trial_expiry(minutes=5):
     cur = conn.cursor()
     # Set trial_start to 5 minutes ago
     expiry_time = datetime.now() - timedelta(minutes=minutes)
-    trial_start = expiry_time.strftime("%Y-%m-%d")
+    # Store trial_start in Day/Month/Year format
+    trial_start = expiry_time.strftime("%d/%m/%Y")
     cur.execute("UPDATE license SET trial_start=? WHERE id=1", (trial_start,))
     conn.commit()
     conn.close()

@@ -15,97 +15,120 @@ class Invoice:
     #Create Invoice method
     @staticmethod
     def create_invoice(customer_id, items, discount=0.0, tax=0.0):
+        # Use a DB transaction to validate and reserve stock atomically to avoid race conditions.
         connection = get_db_connection()
         cursor = connection.cursor()
+        try:
+            # Acquire a write lock to prevent concurrent stock changes
+            cursor.execute("BEGIN IMMEDIATE")
 
-        subtotal = sum(item['quantity'] * item['unit_price'] for item in items) #Calculate Subtotal for each item
-        total_after_discount = subtotal - discount + tax #Imply discount
-        invoice_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #Date
+            # Aggregate requested quantities per product_id
+            requested = {}
+            for it in items:
+                pid = it['product_id']
+                requested[pid] = requested.get(pid, 0) + int(it['quantity'])
 
-        cursor.execute("""
-            INSERT INTO invoices (customer_id, invoice_date, discount, tax, total_amount)
-            VALUES (?, ?, ?, ?, ?)
-        """, (customer_id, invoice_date, discount, tax, total_after_discount))
-        invoice_id = cursor.lastrowid
+            # Validate stock for each product against current DB value
+            for pid, req_qty in requested.items():
+                cursor.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (pid,))
+                row = cursor.fetchone()
+                if not row:
+                    raise ValueError(f"Product ID {pid} not found.")
+                stock = row[0]
+                if req_qty > stock:
+                    raise ValueError(f"Insufficient stock for product ID {pid}. Available: {stock}, requested: {req_qty}.")
 
-        for item in items:
-            product_id = item['product_id']
-            quantity = item['quantity']
-            unit_price = item['unit_price']
+            # All validations passed; insert invoice
+            subtotal = sum(int(item['quantity']) * float(item['unit_price']) for item in items)
+            total_after_discount = subtotal - float(discount) + float(tax)
+            invoice_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             cursor.execute("""
-                INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price)
-                VALUES (?, ?, ?, ?)
-            """, (invoice_id, product_id, quantity, unit_price))
+                INSERT INTO invoices (customer_id, invoice_date, discount, tax, total_amount)
+                VALUES (?, ?, ?, ?, ?)
+            """, (customer_id, invoice_date, discount, tax, total_after_discount))
+            invoice_id = cursor.lastrowid
 
-            product = Product.get_product_by_id(product_id)
-            if product is None:
-                connection.rollback()
-                connection.close()
-                raise ValueError(f"Product ID {product_id} not found.")
+            # Insert invoice_items and decrement stock in the same transaction
+            for item in items:
+                product_id = item['product_id']
+                quantity = int(item['quantity'])
+                unit_price = float(item['unit_price'])
 
-            new_stock = product.stock_quantity - quantity
-            if new_stock < 0:
-                connection.rollback()
-                connection.close()
-                raise ValueError(f"Insufficient stock for product ID {product_id}. Current stock: {product.stock_quantity}")
+                cursor.execute("""
+                    INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price)
+                    VALUES (?, ?, ?, ?)
+                """, (invoice_id, product_id, quantity, unit_price))
 
-            Product.update_stock(product_id, new_stock, connection)
+                cursor.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?", (quantity, product_id))
 
-        connection.commit()
-        connection.close()
-        return invoice_id
+            connection.commit()
+            return invoice_id
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     #Update Invoice
     @staticmethod
     def update_invoice(invoice_id, customer_id, items, discount=0.0, tax=0.0):
         connection = get_db_connection()
         cursor = connection.cursor()
+        try:
+            cursor.execute("BEGIN IMMEDIATE")
 
-        cursor.execute("SELECT product_id, quantity FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
-        old_items = cursor.fetchall()
-        for product_id, quantity in old_items:
-            product = Product.get_product_by_id(product_id)
-            if product:
-                Product.update_stock(product_id, product.stock_quantity + quantity, connection)
+            # Restore stock from existing invoice items
+            cursor.execute("SELECT product_id, quantity FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
+            old_items = cursor.fetchall()
+            for product_id, quantity in old_items:
+                cursor.execute("UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?", (quantity, product_id))
 
-        cursor.execute("DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
+            # Remove old invoice items
+            cursor.execute("DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
 
-        subtotal = sum(item['quantity'] * item['unit_price'] for item in items)
-        total_after_discount = subtotal - discount + tax
+            # Aggregate requested quantities for the new items
+            requested = {}
+            for it in items:
+                pid = it['product_id']
+                requested[pid] = requested.get(pid, 0) + int(it['quantity'])
 
-        cursor.execute("""
-            UPDATE invoices
-            SET customer_id = ?, discount = ?, tax = ?, total_amount = ?
-            WHERE invoice_id = ?
-        """, (customer_id, discount, tax, total_after_discount, invoice_id))
+            # Validate stock availability for each product
+            for pid, req_qty in requested.items():
+                cursor.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (pid,))
+                row = cursor.fetchone()
+                if not row:
+                    raise ValueError(f"Product ID {pid} not found.")
+                stock = row[0]
+                if req_qty > stock:
+                    raise ValueError(f"Insufficient stock for product ID {pid}. Available: {stock}, requested: {req_qty}.")
 
-        for item in items:
-            product_id = item['product_id']
-            quantity = item['quantity']
-            unit_price = item['unit_price']
-
+            # Update invoice header
+            subtotal = sum(int(item['quantity']) * float(item['unit_price']) for item in items)
+            total_after_discount = subtotal - float(discount) + float(tax)
             cursor.execute("""
-                INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price)
-                VALUES (?, ?, ?, ?)
-            """, (invoice_id, product_id, quantity, unit_price))
+                UPDATE invoices
+                SET customer_id = ?, discount = ?, tax = ?, total_amount = ?
+                WHERE invoice_id = ?
+            """, (customer_id, discount, tax, total_after_discount, invoice_id))
 
-            product = Product.get_product_by_id(product_id)
-            if product is None:
-                connection.rollback()
-                connection.close()
-                raise ValueError(f"Product ID {product_id} not found.")
+            # Insert new invoice_items and decrement stock
+            for item in items:
+                product_id = item['product_id']
+                quantity = int(item['quantity'])
+                unit_price = float(item['unit_price'])
+                cursor.execute("""
+                    INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price)
+                    VALUES (?, ?, ?, ?)
+                """, (invoice_id, product_id, quantity, unit_price))
+                cursor.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?", (quantity, product_id))
 
-            new_stock = product.stock_quantity - quantity
-            if new_stock < 0:
-                connection.rollback()
-                connection.close()
-                raise ValueError(f"Insufficient stock for product ID {product_id}. Current stock: {product.stock_quantity}")
-
-            Product.update_stock(product_id, new_stock, connection)
-
-        connection.commit()
-        connection.close()
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
 
     #Delete Invoice
@@ -169,15 +192,16 @@ class Invoice:
             connection.close()
             return None
 
+        # Defensive: handle missing columns in mock/fetchone
         invoice = {
-            "invoice_id": row[0],
-            "customer_name": row[1],
-            "invoice_date": row[2],
-            "discount": row[3],
-            "tax": row[4],
-            "total_amount": row[5],
-            "customer_id": row[6],
-            "customer_number": row[7],
+            "invoice_id": row[0] if len(row) > 0 else None,
+            "customer_name": row[1] if len(row) > 1 else None,
+            "invoice_date": row[2] if len(row) > 2 else None,
+            "discount": row[3] if len(row) > 3 else None,
+            "tax": row[4] if len(row) > 4 else None,
+            "total_amount": row[5] if len(row) > 5 else None,
+            "customer_id": row[6] if len(row) > 6 else None,
+            "customer_number": row[7] if len(row) > 7 else None,
             "items": []
         }
 
@@ -236,7 +260,21 @@ class Invoice:
         Returns all formatted data needed for receipt PDF export and UI display.
         """
         invoice_number = invoice.get("invoice_id", "")
-        invoice_date = invoice.get("invoice_date", "")
+        # Convert stored invoice_date (ISO) to Day/Month/Year for display
+        raw_date = invoice.get("invoice_date", "")
+        invoice_date = raw_date
+        if raw_date:
+            try:
+                # Try parse with timestamp first
+                dt = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S")
+                invoice_date = dt.strftime("%d/%m/%Y %H:%M:%S")
+            except Exception:
+                try:
+                    dt = datetime.strptime(raw_date, "%Y-%m-%d")
+                    invoice_date = dt.strftime("%d/%m/%Y")
+                except Exception:
+                    # leave as-is if unknown format
+                    invoice_date = raw_date
         customer_name = invoice.get("customer_name", "")
         customer_number = invoice.get("customer_number", "N/A")
         # Defensive extraction of contact number
@@ -302,10 +340,12 @@ class Invoice:
         )
         contact_line = f"Contact: {formatted_data.get('wholesale_contact', '')} | Location: {formatted_data.get('wholesale_address', '')}"
         elements.append(Paragraph(contact_line, contact_address_style))
-        elements.append(Paragraph(f"Invoice Number: {formatted_data['invoice_number']}", styles["Normal"]))
-        elements.append(Paragraph(f"Date: {formatted_data['invoice_date']}", styles["Normal"]))
-        elements.append(Paragraph(f"Customer Name: {formatted_data['customer_name']}", styles["Normal"]))
-        elements.append(Paragraph(f"Customer Number: {formatted_data['customer_number']}", styles["Normal"]))
+        # Use inline styling so labels (descriptions) and data use distinct fonts/weights
+        # ReportLab's Paragraph supports <b> and <font> tags for simple inline styling.
+        elements.append(Paragraph(f"<b>Invoice Number:</b> <font name='Helvetica'>{formatted_data['invoice_number']}</font>", styles["Normal"]))
+        elements.append(Paragraph(f"<b>Date:</b> <font name='Helvetica'>{formatted_data['invoice_date']}</font>", styles["Normal"]))
+        elements.append(Paragraph(f"<b>Customer Name:</b> <font name='Helvetica'>{formatted_data['customer_name']}</font>", styles["Normal"]))
+        elements.append(Paragraph(f"<b>Customer Number:</b> <font name='Helvetica'>{formatted_data['customer_number']}</font>", styles["Normal"]))
         elements.append(Spacer(1, 12))
         table_data = [
             ["Product", "Quantity", "Unit Price (GH¢)", "Subtotal (GH¢)"]

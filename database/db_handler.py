@@ -13,7 +13,7 @@ def initialize_database():
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Create products table
+    # Create product table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS products (
             product_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +23,7 @@ def initialize_database():
         )
     """)
 
-    # Create customers table
+    # Create customer table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS customers (
             customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +33,9 @@ def initialize_database():
         )
     """)
 
-    # Create invoices table
+    # Migration to enforce NOT NULL on address removed during development (will handle later)
+
+    # Create invoice table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS invoices (
             invoice_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +61,7 @@ def initialize_database():
         )
     """)
 
-    # Create users table
+    # Create user table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -31,7 +31,10 @@ class SalesReportWidget(QWidget):
         self.show_btn.clicked.connect(self.generate_sales_report)
         self.result_label = QLabel()
         self.result_label.setWordWrap(True)
-        self.result_label.setStyleSheet("font-size: 20px; color: #263238; font-weight: bold; padding: 16px; background-color: #e3f2fd; border-radius: 8px;")
+        # Remove global bold so HTML controls which parts are bold
+        self.result_label.setStyleSheet("font-size: 18px; color: #263238; padding: 16px; background-color: #e3f2fd; border-radius: 8px;")
+        # Use rich text so we can style labels and values separately
+        self.result_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(self.result_label)
         self.setLayout(layout)
         # Auto-generate report if only one option (for Manager)
@@ -48,34 +51,34 @@ class SalesReportWidget(QWidget):
         cursor = conn.cursor()
         today = datetime.date.today()
         if report_type == "Daily":
-            start = today.strftime('%Y-%m-%d')
-            end = start
+            iso_start = today.strftime('%Y-%m-%d')
+            iso_end = iso_start
             # Try to match both DATE(invoice_date) and invoice_date LIKE 'YYYY-MM-DD%'
             cursor.execute("""
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE DATE(invoice_date) = ? OR invoice_date LIKE ?
-            """, (start, f"{start}%"))
+            """, (iso_start, f"{iso_start}%"))
         elif report_type == "Weekly":
-            start = (today - datetime.timedelta(days=today.weekday())).strftime('%Y-%m-%d')
-            end = today.strftime('%Y-%m-%d')
+            iso_start = (today - datetime.timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+            iso_end = today.strftime('%Y-%m-%d')
             cursor.execute("""
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """, (start, end, start, end))
+            """, (iso_start, iso_end, iso_start, iso_end))
         elif report_type == "Monthly":
-            start = today.replace(day=1).strftime('%Y-%m-%d')
-            end = today.strftime('%Y-%m-%d')
+            iso_start = today.replace(day=1).strftime('%Y-%m-%d')
+            iso_end = today.strftime('%Y-%m-%d')
             cursor.execute("""
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """, (start, end, start, end))
+            """, (iso_start, iso_end, iso_start, iso_end))
         elif report_type == "Annual":
-            start = today.replace(month=1, day=1).strftime('%Y-%m-%d')
-            end = today.strftime('%Y-%m-%d')
+            iso_start = today.replace(month=1, day=1).strftime('%Y-%m-%d')
+            iso_end = today.strftime('%Y-%m-%d')
             cursor.execute("""
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """, (start, end, start, end))
+            """, (iso_start, iso_end, iso_start, iso_end))
         else:
             self.result_label.setText("Invalid report type selected.")
             return
@@ -83,11 +86,31 @@ class SalesReportWidget(QWidget):
         rows = cursor.fetchall()
 
         total_sales = sum(row[1] for row in rows)
+        # Convert ISO dates to Day/Month/Year for display and build HTML output
+        try:
+            display_start = datetime.datetime.strptime(iso_start, '%Y-%m-%d').strftime('%d/%m/%Y')
+            display_end = datetime.datetime.strptime(iso_end, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except Exception:
+            display_start = iso_start
+            display_end = iso_end
+
         if not rows:
-            report_msg = f"No sales found for {report_type.lower()} period ({start} to {end})."
+            report_html = (
+                f"<span style='font-weight:Bold;color:#1a237e;'>No sales found</span><br/>"
+                f"<span style='font-weight:Bold;color:#00000e;'>Period:</span> "
+                f"<span style='font-family:Segue UI; font-size:16px; color:#263238;'>{display_start} to {display_end}</span>"
+            )
         else:
-            report_msg = f"{report_type} Sales Report\nPeriod: {start} to {end}\nTotal Sales: GHS{total_sales:,.2f}\nTransactions: {len(rows)}"
-        self.result_label.setText(report_msg)
+            report_html = (
+                f"<span style='font-weight:Bold;color:#1a237e;'>{report_type} Sales Report</span><br/>"
+                f"<span style='font-weight:Bold;color:#00000e;'>Period:</span> "
+                f"<span style='font-family:Segue UI; font-size:18px; color:#263238;'>{display_start} to {display_end}</span><br/>"
+                f"<span style='font-weight:Bold;color:#00000e;'>Total Sales:</span> "
+                f"<span style='font-family:Segue UI; font-size:18px; color:#263238;'>GHS{total_sales:,.2f}</span><br/>"
+                f"<span style='font-weight:Bold;color:#00000e;'>Transactions:</span> "
+                f"<span style='font-family:Segue UI; font-size:18px; color:#263238;'>{len(rows)}</span>"
+            )
+        self.result_label.setText(report_html)
         conn.close()
 
 # Embedded widget for graph

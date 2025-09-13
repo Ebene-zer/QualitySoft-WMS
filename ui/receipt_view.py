@@ -142,7 +142,18 @@ class ReceiptView(QWidget):
         if hasattr(self, 'details_label'):
             self.layout.removeWidget(self.details_label)
             self.details_label.deleteLater()
-        self.details_label = QLabel(f"Customer Number: {formatted['customer_number']} | {formatted['wholesale_contact']} | Total Items: {formatted['total_items']}")
+        # Use rich text so the description (label) and actual data have different font styles
+        details_html = (
+            f"<span style='font-weight:700; color:#222;'>Customer Name:</span> "
+            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['customer_name']}</span>"
+            f" &nbsp;|&nbsp; <span style='font-weight:700; color:#222;'>Number:</span> "
+            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['customer_number']}</span>"
+            f" &nbsp;|&nbsp; <span style='font-weight:700; color:#222;'>Total:</span> "
+            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['total']}</span>"
+        )
+        self.details_label = QLabel(details_html)
+        # Use Qt enum for text format
+        self.details_label.setTextFormat(Qt.TextFormat.RichText)
         self.layout.insertWidget(3, self.details_label)
 
         for item in formatted["items"]:

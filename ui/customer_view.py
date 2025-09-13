@@ -124,6 +124,9 @@ class CustomerView(QWidget):
         if not name:
             QMessageBox.warning(self, "Input Error", "Customer name is required.")
             return
+        if not address:
+            QMessageBox.warning(self, "Input Error", "Address is required.")
+            return
         if not (phone_number.isdigit() and len(phone_number) == 10):
             QMessageBox.warning(self, "Input Error", "Phone number must be 10 digits.")
             return
@@ -152,14 +155,20 @@ class CustomerView(QWidget):
         if not name:
             QMessageBox.warning(self, "Input Error", "Customer name is required.")
             return
+        if not address:
+            QMessageBox.warning(self, "Input Error", "Address is required.")
+            return
         if not (phone_number.isdigit() and len(phone_number) == 10):
             QMessageBox.warning(self, "Input Error", "Phone number must be 10 digits")
             return
 
-        Customer.update_customer(customer_id, name, phone_number, address)
-        QMessageBox.information(self, "Success", "Customer details updated.")
-        self.load_customers()
-        self.clear_inputs()
+        try:
+            Customer.update_customer(customer_id, name, phone_number, address)
+            QMessageBox.information(self, "Success", "Customer details updated.")
+            self.load_customers()
+            self.clear_inputs()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to update customer:\n{e}")
 
 
     # Act upon a click on Delete Customer Button
@@ -191,6 +200,7 @@ class CustomerView(QWidget):
         self.name_input.clear()
         self.phone_input.clear()
         self.address_input.clear()
+        # no details label — keep inputs cleared
 
     def populate_fields_from_selection(self):
         selected = self.customer_table.currentRow()
@@ -200,3 +210,4 @@ class CustomerView(QWidget):
         self.name_input.setText(self.customer_table.item(selected, 1).text())
         self.phone_input.setText(self.customer_table.item(selected, 2).text())
         self.address_input.setText(self.customer_table.item(selected, 3).text())
+        # previous implementation: no extra details label

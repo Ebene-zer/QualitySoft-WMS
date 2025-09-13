@@ -89,7 +89,10 @@ class InvoiceView(QWidget):
         self.layout.addWidget(self.tax_input)
 
         # Total Label
-        self.total_label = QLabel("Total: GH¢ 0.00")
+        self.total_label = QLabel()
+        # Use rich text so label and amount have distinct styles
+        self.total_label.setTextFormat(Qt.TextFormat.RichText)
+        self.total_label.setText("<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>GH¢ 0.00</span>")
         self.layout.addWidget(self.total_label)
 
         # Save Invoice Button
@@ -188,16 +191,27 @@ class InvoiceView(QWidget):
         product_id = int(product_text.split(" - ")[0])
         product = Product.get_product_by_id(product_id)
 
-        if quantity > product.stock_quantity:
-            QMessageBox.warning(self, "Low Stock", f"Only {product.stock_quantity} units available.")
+        # Consider quantities already added to the current invoice for this product
+        existing_qty = sum(it['quantity'] for it in self.items if it['product_id'] == product_id)
+        if existing_qty + quantity > product.stock_quantity:
+            QMessageBox.warning(self, "Low Stock", f"Only {product.stock_quantity - existing_qty} additional units available (already added: {existing_qty}).")
             return
 
-        self.items.append({
-            "product_id": product.product_id,
-            "quantity": quantity,
-            "unit_price": product.price,
-            "product_name": product.name  # Store product name for display
-        })
+        # If product already in invoice items, merge quantities instead of adding duplicate rows
+        merged = False
+        for it in self.items:
+            if it['product_id'] == product_id:
+                it['quantity'] += quantity
+                merged = True
+                break
+
+        if not merged:
+            self.items.append({
+                "product_id": product.product_id,
+                "quantity": quantity,
+                "unit_price": product.price,
+                "product_name": product.name  # Store product name for display
+            })
 
         self.load_invoice_items_table()
         self.update_total()
@@ -214,10 +228,28 @@ class InvoiceView(QWidget):
             QMessageBox.warning(self, "Input Error", "Enter a valid quantity.")
             return
         product_name = self.invoice_items_table.item(selected, 0).text()
+        # Find the item to update
+        target = None
         for item in self.items:
             if item['product_name'] == product_name:
-                item['quantity'] = quantity
+                target = item
                 break
+        if not target:
+            QMessageBox.warning(self, "Error", "Selected item not found in invoice items.")
+            return
+
+        product = Product.get_product_by_id(target['product_id'])
+        if product is None:
+            QMessageBox.warning(self, "Error", "Product not found.")
+            return
+
+        # Compute quantity reserved by other lines for same product
+        other_reserved = sum(it['quantity'] for it in self.items if it['product_id'] == target['product_id'] and it is not target)
+        if other_reserved + quantity > product.stock_quantity:
+            QMessageBox.warning(self, "Low Stock", f"Only {product.stock_quantity - other_reserved} units available for this product (others reserved: {other_reserved}).")
+            return
+
+        target['quantity'] = quantity
         self.load_invoice_items_table()
         self.update_total()
         self.quantity_input.clear()
@@ -244,7 +276,9 @@ class InvoiceView(QWidget):
         except ValueError:
             tax = 0.0
         total = subtotal - discount + tax
-        self.total_label.setText(f"Total: GH¢ {total:,.2f}")
+        # Update using rich-text so description and value have different styles
+        self.total_label.setTextFormat(Qt.TextFormat.RichText)
+        self.total_label.setText(f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>GH¢ {total:,.2f}</span>")
 
     def save_invoice(self):
         if not self.items:
@@ -256,7 +290,35 @@ class InvoiceView(QWidget):
             QMessageBox.warning(self, "Input Error", "Select a customer.")
             return
 
-        customer = next((c for c in Customer.get_all_customers() if c.name == customer_text), None)
+        # The dropdown shows customers as "Name - phone_number". Match against that
+        # composite string first, then fall back to name-only or fuzzy matches to
+        # handle user-typed input.
+        customers = Customer.get_all_customers()
+        customer = None
+        # Exact composite match: "Name - phone"
+        for c in customers:
+            composite = f"{c.name} - {c.phone_number}"
+            if composite == customer_text:
+                customer = c
+                break
+
+        # If no exact composite match, try name-only (user may have selected/typed just the name)
+        if not customer:
+            name_part = customer_text.split(" - ")[0].strip()
+            for c in customers:
+                if c.name == name_part:
+                    customer = c
+                    break
+
+        # As a last resort, try a case-insensitive contains match against the composite
+        if not customer:
+            ct_lower = customer_text.lower()
+            for c in customers:
+                composite = f"{c.name} - {c.phone_number}"
+                if ct_lower in composite.lower():
+                    customer = c
+                    break
+
         if not customer:
             QMessageBox.warning(self, "Input Error", "Selected customer not found.")
             return
@@ -271,7 +333,16 @@ class InvoiceView(QWidget):
         except ValueError:
             QMessageBox.warning(self, "Input Error", "Enter a valid tax value.")
             return
-        invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
+        try:
+            invoice_id = Invoice.create_invoice(customer_id, self.items, discount, tax)
+        except ValueError as e:
+            # Model-level validation (e.g., insufficient stock) failed
+            QMessageBox.warning(self, "Save Error", str(e))
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An unexpected error occurred while saving the invoice:\n{e}")
+            return
+
         QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created.")
         self.reset_invoice_form()
         self.invoice_created.emit()
