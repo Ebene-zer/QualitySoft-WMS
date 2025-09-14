@@ -1,6 +1,6 @@
 import unittest
 from models.user import User
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 class TestUserModel(BaseTestCase):
     def test_add_and_get_users(self):

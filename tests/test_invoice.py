@@ -3,7 +3,7 @@ from models.invoice import Invoice
 from models.product import Product
 from models.customer import Customer
 from database.db_handler import get_db_connection, initialize_database
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 class TestInvoice(BaseTestCase):
     def setUp(self):

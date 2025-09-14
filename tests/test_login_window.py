@@ -3,7 +3,7 @@ import sys
 import unittest
 from unittest.mock import patch
 from PyQt6.QtWidgets import QApplication
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
 

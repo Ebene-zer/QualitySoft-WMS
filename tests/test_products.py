@@ -1,6 +1,6 @@
 import unittest
 from models.product import Product
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 class TestProductModel(BaseTestCase):
     def test_add_and_get_products(self):

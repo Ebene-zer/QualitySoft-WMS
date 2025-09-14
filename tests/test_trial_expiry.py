@@ -10,7 +10,7 @@ from utils.license_manager import (
     is_trial_expired,
     set_license_field,
 )
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 class TestLicenseManager(BaseTestCase):
     def setUp(self):

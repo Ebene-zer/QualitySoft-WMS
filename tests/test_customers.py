@@ -1,6 +1,6 @@
 import unittest
 from models.customer import Customer
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 class TestCustomerModel(BaseTestCase):
     def test_add_and_get_customers(self):
