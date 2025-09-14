@@ -1,19 +1,15 @@
 import os
 import unittest
 from unittest.mock import patch, MagicMock
-from PyQt6.QtWidgets import QApplication
-import sys
+from tests.base_test import BaseTestCase
 
 # Ensure test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 # Import the classes to test
 from ui.receipt_view import SelectAllOnFocus, ReceiptView
-from tests.base_test import BaseTestCase
 
-app = QApplication(sys.argv)  # Needed for QWidget tests
-
-class TestSelectAllOnFocus(unittest.TestCase):
+class TestSelectAllOnFocus(BaseTestCase):
     def test_eventFilter_focus_in(self):
         obj = MagicMock()
         event = MagicMock()

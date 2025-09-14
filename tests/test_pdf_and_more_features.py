@@ -2,11 +2,10 @@ import os
 import sys
 import unittest
 from unittest.mock import patch, MagicMock
-from PyQt6.QtWidgets import QApplication
+
+from tests.base_test import BaseTestCase
 
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
-
-app = QApplication.instance() or QApplication(sys.argv)
 
 from database.db_handler import initialize_database, get_db_connection
 from models.invoice import Invoice
@@ -15,7 +14,6 @@ from models.customer import Customer
 from ui.more import MoreDropdown, GraphWidget, SalesReportWidget
 from ui.receipt_view import ReceiptView
 
-from tests.base_test import BaseTestCase
 
 class TestInvoicePDFExportUnit(BaseTestCase):
     def test_invoice_export_receipt_to_pdf_calls_build(self):

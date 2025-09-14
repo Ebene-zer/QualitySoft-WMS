@@ -8,9 +8,6 @@ from tests.base_test import BaseTestCase
 
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
-# Ensure a QApplication
-app = QApplication.instance() or QApplication(sys.argv)
-
 from ui.settings_dialog import SettingsDialog
 
 class TestSettingsDialog(BaseTestCase):

@@ -1,11 +1,17 @@
 import os
 import unittest
 from database.db_handler import get_db_connection, initialize_database
+from PyQt6.QtWidgets import QApplication
 
 class BaseTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._original_db_name = os.environ.get("WMS_DB_NAME")
+        # Ensure single QApplication (avoid multiple creations causing segfault on teardown)
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        if QApplication.instance() is None:
+            cls._app = QApplication([])
         print("[TEST LOG] Starting test class:", cls.__name__)
 
     @classmethod

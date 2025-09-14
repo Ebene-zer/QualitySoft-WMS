@@ -2,7 +2,6 @@ import os
 import sys
 import unittest
 from unittest.mock import patch
-from PyQt6.QtWidgets import QApplication
 from tests.base_test import BaseTestCase
 
 SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
@@ -10,8 +9,6 @@ SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
 # Ensure test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
-# Ensure QApplication exists for widget tests
-app = QApplication.instance() or QApplication(sys.argv)
 
 with patch('ui.main_window.MainWindow', autospec=True):
     from ui.login_window import LoginWindow
