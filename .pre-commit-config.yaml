@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: []
+        # You can limit paths to speed up (e.g. args: [models, utils]) while incrementally adopting types.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+# Optional: run tests on commit (commented out to keep commits fast). Uncomment if desired.
+#  - repo: local
+#    hooks:
+#      - id: pytest
+#        name: pytest (quick)
+#        entry: pytest -q --maxfail=1
+#        language: system
+#        types: [python]
+#        pass_filenames: false

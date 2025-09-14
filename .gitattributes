@@ -1,0 +1,22 @@
+# Normalize line endings to LF for source files
+* text=auto
+
+# Explicit LF for code & config
+*.py text eol=lf
+*.pyw text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+
+# Keep images/binaries untouched
+*.png binary
+*.jpg binary
+*.ico binary
+*.db binary
+
+# Windows specific scripts (if any .bat) keep CRLF
+*.bat eol=crlf

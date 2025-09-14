@@ -1,0 +1,43 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "UP"  # pyupgrade
+]
+ignore = [
+  # Add any rule codes you want to suppress here
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["database", "models", "ui", "utils", "tests"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = false
+strict_optional = false
+show_error_codes = true
+pretty = true
+# You can gradually tighten by enabling: disallow_untyped_defs = true
+
+[tool.coverage.run]
+branch = true
+source = ["database", "models", "ui", "utils"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
