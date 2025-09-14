@@ -1,8 +1,6 @@
 import os
-import sys
-import unittest
+import pytest
 from unittest.mock import patch
-from tests.base_test import BaseTestCase
 
 SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
 
@@ -13,8 +11,9 @@ os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 with patch('ui.main_window.MainWindow', autospec=True):
     from ui.login_window import LoginWindow
 
-@unittest.skipIf(SKIP_GUI, "Skipping GUI tests in headless mode")
-class TestLoginWindow(BaseTestCase):
+pytestmark = [pytest.mark.usefixtures("qapp"), pytest.mark.skipif(SKIP_GUI, reason="Skipping GUI tests in headless mode")]
+
+class TestLoginWindow:
     @patch('ui.login_window.QMessageBox')
     @patch('ui.login_window.User')
     def test_successful_login(self, mock_user, mock_msgbox):
@@ -24,9 +23,9 @@ class TestLoginWindow(BaseTestCase):
         window.password_input.setText("testpass")
         window.role_combo.setCurrentText("Admin")
         window.authenticate()
-        self.assertTrue(hasattr(window, "main_window"))
+        assert hasattr(window, "main_window")
         window.main_window.show.assert_called_once()
-        self.assertFalse(mock_msgbox.warning.called)
+        assert not mock_msgbox.warning.called
 
     @patch('ui.login_window.QMessageBox')
     @patch('ui.login_window.User')
@@ -37,7 +36,4 @@ class TestLoginWindow(BaseTestCase):
         window.password_input.setText("wrongpass")
         window.role_combo.setCurrentText("Admin")
         window.authenticate()
-        self.assertTrue(mock_msgbox.warning.called)
-
-if __name__ == '__main__':
-    unittest.main()
+        assert mock_msgbox.warning.called

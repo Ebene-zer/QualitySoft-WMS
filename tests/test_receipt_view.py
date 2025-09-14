@@ -1,27 +1,24 @@
 import os
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
-from tests.base_test import BaseTestCase
 
-# Ensure test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
-
-# Import the classes to test
 from ui.receipt_view import SelectAllOnFocus, ReceiptView
 
-class TestSelectAllOnFocus(BaseTestCase):
+pytestmark = [pytest.mark.usefixtures("qapp")]
+
+class TestSelectAllOnFocus:
     def test_eventFilter_focus_in(self):
         obj = MagicMock()
         event = MagicMock()
         event.type.return_value = 8  # QEvent.Type.FocusIn
-        filter = SelectAllOnFocus()
-        result = filter.eventFilter(obj, event)
+        filter_obj = SelectAllOnFocus()
+        result = filter_obj.eventFilter(obj, event)
         obj.selectAll.assert_called_once()
-        self.assertFalse(result)
+        assert result is False
 
-class TestReceiptView(BaseTestCase):
-    def setUp(self):
-        super().setUp()
+class TestReceiptView:
+    def setup_method(self):
         self.view = ReceiptView()
 
     @patch('ui.receipt_view.Invoice')
@@ -30,7 +27,7 @@ class TestReceiptView(BaseTestCase):
             MagicMock(invoice_id=1, customer_name='John', total_amount=100.0)
         ]
         self.view.load_invoices()
-        self.assertEqual(self.view.invoice_dropdown.count(), 1)
+        assert self.view.invoice_dropdown.count() == 1
 
     @patch('ui.receipt_view.QMessageBox')
     @patch('ui.receipt_view.Invoice')
@@ -72,6 +69,3 @@ class TestReceiptView(BaseTestCase):
         self.view.invoice_dropdown.currentIndex = MagicMock(return_value=-1)
         self.view.print_receipt()
         mock_msgbox.warning.assert_called_once()
-
-if __name__ == '__main__':
-    unittest.main()

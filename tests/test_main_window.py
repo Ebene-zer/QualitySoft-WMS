@@ -1,9 +1,7 @@
 import os
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 from PyQt6.QtWidgets import QWidget
-import sys
-from tests.base_test import BaseTestCase
 
 # Ensure test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
@@ -17,24 +15,23 @@ with patch('ui.main_window.ProductView', side_effect=lambda: QWidget()), \
      patch('ui.login_window.LoginWindow', MagicMock()):
     from ui.main_window import MainWindow
 
-class TestMainWindow(BaseTestCase):
+pytestmark = [pytest.mark.usefixtures("qapp")]  # ensure QApplication from conftest
+
+class TestMainWindow:
     def test_nav_buttons_and_switch_view(self):
         window = MainWindow('testuser', 'Admin')
-        self.assertEqual(window.windowTitle(), "QualitySoft WMS")
-        self.assertEqual(len(window.nav_buttons), 7)
+        assert window.windowTitle() == "QualitySoft WMS"
+        assert len(window.nav_buttons) == 7
         for i in range(5):
             window.switch_view(i)
-            self.assertEqual(window.stacked_widget.currentIndex(), i)
+            assert window.stacked_widget.currentIndex() == i
 
     def test_nav_buttons_for_non_admin(self):
         window = MainWindow('testuser', 'staff')
-        self.assertEqual(len(window.nav_buttons), 5)
+        assert len(window.nav_buttons) == 5
 
     def test_logout(self):
         window = MainWindow('testuser', 'Admin')
         window.close = MagicMock()
         window.logout()
         window.close.assert_called_once()
-
-if __name__ == '__main__':
-    unittest.main()
