@@ -1,7 +1,10 @@
 import hashlib
+import logging
 import os
 
 from database.db_handler import get_db_connection
+
+logger = logging.getLogger(__name__)
 
 
 class UserRecord:
@@ -33,11 +36,9 @@ class User:
         return attempt_hash.hex() == hash_hex
 
     @staticmethod
-    def add_user(username, password, role):
+    def add_user(username, password, role, must_change_password: bool = False):
         """Add a new user with hashed password."""
         import sqlite3
-
-        from database.db_handler import get_db_connection
 
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -47,14 +48,15 @@ class User:
         try:
             cursor.execute(
                 """
-                INSERT INTO users (username, password_hash, role)
-                VALUES (?, ?, ?)
+                INSERT INTO users (username, password_hash, role, must_change_password)
+                VALUES (?, ?, ?, ?)
             """,
-                (username, password_hash, role),
+                (username, password_hash, role, 1 if must_change_password else 0),
             )
             connection.commit()
         except sqlite3.IntegrityError as e:
             connection.rollback()
+            logger.warning("Attempt to insert duplicate user '%s': %s", username, e)
             raise e
         finally:
             connection.close()
@@ -75,7 +77,7 @@ class User:
                     return stored_role  # Return role if authentication succeeds
             return None  # Authentication failed
         except Exception as e:
-            print(f"Authentication error: {e}")
+            logger.error("Authentication error for user '%s': %s", username, e)
             return None
 
     @staticmethod
@@ -118,6 +120,9 @@ class User:
                 (new_username, hashed_password, new_role, old_username),
             )
             connection.commit()
+        except Exception as e:
+            logger.error("Failed updating user '%s' -> '%s': %s", old_username, new_username, e)
+            raise
         finally:
             connection.close()
 
@@ -129,6 +134,9 @@ class User:
         try:
             cursor.execute("DELETE FROM users WHERE username = ?", (username,))
             connection.commit()
+        except Exception as e:
+            logger.error("Failed deleting user '%s': %s", username, e)
+            raise
         finally:
             connection.close()
 
@@ -152,3 +160,34 @@ class User:
         row = cursor.fetchone()
         connection.close()
         return UserRecord(*row) if row else None
+
+    @staticmethod
+    def get_must_change_password(username: str) -> bool:
+        """Check if the user must change their password."""
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT must_change_password FROM users WHERE username=?", (username,))
+        row = cursor.fetchone()
+        connection.close()
+        return bool(row[0]) if row else False
+
+    @staticmethod
+    def change_password(username: str, new_password: str, clear_flag: bool = True):
+        """Change the password for a user, with an option to clear the must_change_password flag."""
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        new_hash = User.hash_password(new_password)
+        try:
+            if clear_flag:
+                cursor.execute(
+                    "UPDATE users SET password_hash=?, must_change_password=0 WHERE username=?",
+                    (new_hash, username),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE users SET password_hash=? WHERE username=?",
+                    (new_hash, username),
+                )
+            connection.commit()
+        finally:
+            connection.close()

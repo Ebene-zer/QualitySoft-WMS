@@ -1,9 +1,63 @@
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from models.user import User
 from ui.main_window import MainWindow
+
+
+class PasswordChangeDialog(QDialog):
+    def __init__(self, username: str, parent=None):
+        super().__init__(parent)
+        self.username = username
+        self.setWindowTitle("Change Password")
+        self.setModal(True)
+        self.resize(350, 180)
+        layout = QVBoxLayout()
+        form = QFormLayout()
+        self.new_pwd = QLineEdit()
+        self.new_pwd.setEchoMode(QLineEdit.EchoMode.Password)
+        self.confirm_pwd = QLineEdit()
+        self.confirm_pwd.setEchoMode(QLineEdit.EchoMode.Password)
+        form.addRow("New Password:", self.new_pwd)
+        form.addRow("Confirm Password:", self.confirm_pwd)
+        layout.addLayout(form)
+        btn_row = QHBoxLayout()
+        self.ok_btn = QPushButton("Save")
+        self.cancel_btn = QPushButton("Cancel")
+        self.ok_btn.clicked.connect(self._on_save)
+        self.cancel_btn.clicked.connect(self.reject)
+        btn_row.addWidget(self.ok_btn)
+        btn_row.addWidget(self.cancel_btn)
+        layout.addLayout(btn_row)
+        self.setLayout(layout)
+
+    def _on_save(self):
+        pwd = self.new_pwd.text().strip()
+        confirm = self.confirm_pwd.text().strip()
+        if len(pwd) < 8:
+            QMessageBox.warning(self, "Weak Password", "Password must be at least 8 characters long.")
+            return
+        if pwd != confirm:
+            QMessageBox.warning(self, "Mismatch", "Passwords do not match.")
+            return
+        try:
+            User.change_password(self.username, pwd, clear_flag=True)
+            QMessageBox.information(self, "Updated", "Password changed successfully.")
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to change password: {e}")
 
 
 class LoginWindow(QWidget):
@@ -104,6 +158,17 @@ class LoginWindow(QWidget):
                 if role != selected_role:
                     QMessageBox.warning(self, "Access Denied", f"This is not {selected_role} account.")
                     return
+
+                # Force password change if required
+                try:
+                    if User.get_must_change_password(username) is True:
+                        dlg = PasswordChangeDialog(username, self)
+                        if dlg.exec() != QDialog.DialogCode.Accepted:
+                            QMessageBox.information(self, "Cancelled", "Password change required before access.")
+                            return
+                except Exception:
+                    # If the column/method not available, proceed (legacy DB) – fail open only for backward compat.
+                    pass
 
                 self.main_window = MainWindow(username, role)
                 self.main_window.show()

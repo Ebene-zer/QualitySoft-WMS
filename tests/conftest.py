@@ -15,13 +15,14 @@ def qapp():
     yield app
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def db(tmp_path):
-    # Per-test isolated SQLite DB.
+    # Per-test isolated SQLite DB (autouse so individual tests need not request it).
     test_db = tmp_path / "test.db"
     os.environ["WMS_DB_NAME"] = str(test_db)
     initialize_database()
     yield
+    # Optional cleanup (not strictly needed since a fresh file is used each test)
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -34,25 +35,3 @@ def db(tmp_path):
         conn.close()
     except Exception:
         pass
-
-
-# Automatically ensure DB fixture runs for every test (so individual tests don't need to request db explicitly)
-@pytest.fixture(autouse=True)
-def _auto_db(db):
-    yield
-
-
-@pytest.fixture()
-def log():
-    def _log(message: str):
-        print(f"[TEST LOG] {message}")
-
-    return _log
-
-
-@pytest.fixture()
-def seed_customer():
-    from models.customer import Customer
-
-    Customer.add_customer("Alice", "0123456789", "Wonderland")
-    return Customer.get_all_customers()[0]

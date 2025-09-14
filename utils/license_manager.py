@@ -4,6 +4,9 @@ from datetime import datetime, timedelta
 
 from database.db_handler import get_db_connection
 
+# Allowed columns for license updates to avoid SQL injection via field parameter
+_ALLOWED_LICENSE_FIELDS = {"trial_start", "product_pin", "trial_days"}
+
 
 def get_license_row():
     conn = get_db_connection()
@@ -15,6 +18,8 @@ def get_license_row():
 
 
 def set_license_field(field, value):
+    if field not in _ALLOWED_LICENSE_FIELDS:
+        raise ValueError(f"Invalid license field: {field}")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(f"UPDATE license SET {field}=? WHERE id=1", (value,))

@@ -1,14 +1,39 @@
+import logging
+import secrets
 import sys
 import uuid
 from datetime import datetime
 
 from PyQt6.QtGui import QGuiApplication
-from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from database.db_handler import initialize_database
 from models.user import User
 from ui.login_window import LoginWindow
-from utils.license_manager import check_product_pin, is_trial_expired, set_license_field
+from utils.license_manager import (
+    check_product_pin,
+    is_trial_expired,
+    set_license_field,
+)
+
+# Application version constant (optional)
+__version__ = "1.0.0"
+
+
+def _configure_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    logging.getLogger("sqlite3").setLevel(logging.WARNING)
 
 
 class PinDialog(QDialog):
@@ -56,16 +81,31 @@ class PinDialog(QDialog):
             QMessageBox.critical(self, "Error", f"An error occurred during pin validation: {e}")
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
+def main() -> int:
+    """Application entry point used by console script 'wms'.
+
+    Returns an exit status code.
+    """
+    _configure_logging()
+    app = QApplication.instance() or QApplication(sys.argv)
     initialize_database()
-    # Add default admin user if it doesn't exist
     if not User.user_exists("admin"):
-        User.add_user("admin", "admin123", "Admin")
+        temp_pass = secrets.token_urlsafe(10)
+        User.add_user("admin", temp_pass, "Admin", must_change_password=True)
+        QMessageBox.information(
+            None,
+            "Initial Admin Setup",
+            f"An admin account was created.\nUsername: admin\nTemporary Password: {temp_pass}\n"
+            "You must set a new password now.",
+        )
     if is_trial_expired():
         pin_dialog = PinDialog()
         if pin_dialog.exec() != QDialog.DialogCode.Accepted:
-            sys.exit(0)
+            return 0
     login = LoginWindow()
     login.show()
-    sys.exit(app.exec())
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

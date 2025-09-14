@@ -1,17 +1,53 @@
+[project]
+name = "qualitysoft-wms"
+version = "1.0.0"
+description = "Wholesale Management System (MVP)"
+authors = [ { name = "Ebenezer Fuachie", email = "fuachiee717@gmai.com" } ]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = ["wholesale", "inventory", "invoicing", "pyqt", "wms"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: Apache Software License",
+  "Environment :: Win32 (MS Windows)",
+  "Intended Audience :: End Users/Desktop",
+  "Topic :: Office/Business"
+]
+dependencies = [
+  "PyQt6==6.9.0",
+  "pandas==2.2.3",
+  "openpyxl==3.1.5",
+  "fpdf==1.7.2",
+  "reportlab",
+  "matplotlib",
+  "python-dateutil==2.9.0.post0"
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pytest", "coverage"]
+
+[project.scripts]
+wms = "main:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.ruff]
 line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
 select = [
-  "E",  # pycodestyle errors
-  "F",  # pyflakes
-  "I",  # isort
-  "B",  # flake8-bugbear
-  "UP"  # pyupgrade
+  "E",
+  "F",
+  "I",
+  "B",
+  "UP"
 ]
 ignore = [
-  # Add any rule codes you want to suppress here
 ]
 
 [tool.ruff.format]
@@ -32,7 +68,6 @@ warn_return_any = false
 strict_optional = false
 show_error_codes = true
 pretty = true
-# You can gradually tighten by enabling: disallow_untyped_defs = true
 
 [tool.coverage.run]
 branch = true

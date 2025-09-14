@@ -1,7 +1,16 @@
+import logging
 import sys
 
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QPushButton, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ui.customer_view import CustomerView
 from ui.invoice_view import InvoiceView
@@ -10,6 +19,7 @@ from ui.product_view import ProductView
 from ui.receipt_view import ReceiptView
 from ui.settings_dialog import SettingsDialog
 from ui.user_view import UserView
+from utils.backup import needs_backup, perform_backup
 
 
 class MainWindow(QWidget):
@@ -189,6 +199,24 @@ class MainWindow(QWidget):
     def refresh_more_features_dialog(self):
         # No longer needed
         pass
+
+    def closeEvent(self, event):
+        """Perform an automatic backup if one is due before closing. Show UI warning if it fails."""
+        try:
+            if needs_backup(hours=24):
+                log = logging.getLogger(__name__)
+                log.info("Auto backup triggered on exit.")
+                try:
+                    path = perform_backup()
+                    log.info("Auto backup created at %s", path)
+                except Exception as e:
+                    log.warning("Auto backup failed: %s", e)
+                    try:
+                        QMessageBox.warning(self, "Backup Failed", f"Automatic backup failed.\n{e}")
+                    except Exception:
+                        pass
+        finally:
+            super().closeEvent(event)
 
 
 if __name__ == "__main__":
