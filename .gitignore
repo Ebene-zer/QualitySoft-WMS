@@ -1,112 +1,81 @@
-# Byte-compiled / optimized / DLL files
+# --- Python bytecode / build artifacts ---
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
+.build/
 .Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
 *.egg-info/
-.installed.cfg
 *.egg
-
-# Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+# --- Environments / dependency managers ---
+.python-version
+Pipfile.lock
+.venv/
+venv/
+ENV/
+
+# --- Testing & coverage ---
+.pytest_cache/
 .coverage
 .coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+htmlcov/
+.nox/
+.tox/
 .hypothesis/
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# pytest
-.cache
-
-# mypy
 .mypy_cache/
 .dmypy.json
-
-# Pyre type checker
 .pyre/
 
-# VS Code
+# --- IDE / Editors ---
 .vscode/
-
-# PyCharm
 .idea/
-.idea/encodings.xml
 
-# Test files and test database
-/testes/
-test_wholesale.db
+# --- Qodana (static analysis output) ---
+.qodana/
 
-# Sensitive and private files
+# --- Logs & runtime artifacts ---
+*.log
+*.tmp
+*.bak
+*.pid
+
+# --- Databases (keep out of VCS) ---
 wholesale.db
 *.db
 *.sqlite
 *.sqlite3
-*.pyc
-__pycache__/
-*.log
-*.bak
-*.tmp
+# If you need a small fixture DB, prefer generating it in tests instead of committing.
+# Otherwise whitelist a specific one, e.g. uncomment below:
+# !tests/fixtures/fixture_wholesale.db
+
+# --- Environment / secrets ---
+.env
+.env.*
 *.env
-*.DS_Store
-*.pkl
-*.json
+secret*
+config/*secrets*.json
 
-# IDE and editor folders
-.vscode/
-.idea/
-
-# Test files and test databases
-testes/
-test_*.db
-
-# Animation and backup
-anime/
-backup/
-
-# System files
+# --- OS / misc ---
+.DS_Store
 Thumbs.db
 
-# Do not commit license keys, secrets, or config files
-secret*
-config*
+# --- Binary / serialized data (decide case-by-case) ---
+*.pkl
 
-# Ignore all files in backup and anime folders
+# --- Project specific ignores ---
+backup/
+anime/
 backup/*
 anime/*
 
-# Utility scripts (do not commit pin generator)
+# --- Sensitive utility scripts (ignored) ---
 utils/generate_pin.py

@@ -218,10 +218,9 @@ class MoreDropdown(QWidget):
         self.setLayout(layout)
         self.on_option_selected = on_option_selected
         self.dropdown.currentIndexChanged.connect(self._on_index_changed)
-
-        # --- ADD THIS: Show the default widget on startup ---
-        QTimer.singleShot(0, lambda: self._on_index_changed(self.dropdown.currentIndex()))
-
+        # Initialize current_widget early for tests and call handler immediately
+        self.current_widget = None
+        self._on_index_changed(self.dropdown.currentIndex())
 
     def _on_index_changed(self, index):
         # Clear content area

@@ -1,11 +1,15 @@
 import sqlite3
 import os
 
-DB_NAME = os.environ.get("WMS_DB_NAME", "wholesale.db")
+# Keep constants for clarity but always re-read environment when connecting.
+DB_ENV_KEY = "WMS_DB_NAME"
+DEFAULT_DB_FILENAME = "wholesale.db"
+
 
 def get_db_connection(db_name=None):
+    # Always resolve DB name at call time so tests/app isolation works.
     if db_name is None:
-        db_name = DB_NAME
+        db_name = os.environ.get(DB_ENV_KEY, DEFAULT_DB_FILENAME)
     connection = sqlite3.connect(db_name, timeout=10)
     return connection
 

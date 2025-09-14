@@ -2,9 +2,17 @@ import hashlib
 import os
 from database.db_handler import get_db_connection
 
+class UserRecord:
+    """Lightweight user record returned by query helpers."""
+    def __init__(self, user_id, username, role):
+        self.user_id = user_id
+        self.username = username
+        self.role = role
+
 class User:
     @staticmethod
     def hash_password(password, salt=None):
+        """Hash a password for storing."""
         if salt is None:
             salt = os.urandom(16)
         pwd_hash = hashlib.pbkdf2_hmac(
@@ -17,6 +25,7 @@ class User:
 
     @staticmethod
     def verify_password(stored_password_hash, password_attempt):
+        """Verify a password against an existing hash."""
         salt_hex = stored_password_hash[:32]
         hash_hex = stored_password_hash[32:]
 
@@ -31,6 +40,7 @@ class User:
 
     @staticmethod
     def add_user(username, password, role):
+        """Add a new user with hashed password."""
         from database.db_handler import get_db_connection
         import sqlite3
 
@@ -53,6 +63,7 @@ class User:
 
     @staticmethod
     def authenticate(username, password):
+        """Authenticate a user by username and password."""
         try:
             connection = get_db_connection()
             cursor = connection.cursor()
@@ -71,6 +82,7 @@ class User:
 
     @staticmethod
     def get_user_role(username):
+        """Get the role of a user by username."""
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
@@ -85,6 +97,7 @@ class User:
 
     @staticmethod
     def user_exists(username):
+        """Check if a user exists by username."""
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("SELECT 1 FROM users WHERE username = ?", (username,))
@@ -94,6 +107,7 @@ class User:
 
     @staticmethod
     def update_user(old_username, new_username, new_password, new_role):
+        """Update an existing user's details."""
         connection = get_db_connection()
         cursor = connection.cursor()
         hashed_password = User.hash_password(new_password)
@@ -108,6 +122,7 @@ class User:
 
     @staticmethod
     def delete_user(username):
+        """Delete a user by username."""
         connection = get_db_connection()
         cursor = connection.cursor()
         try:
@@ -115,3 +130,24 @@ class User:
             connection.commit()
         finally:
             connection.close()
+
+    # ---------------- New helper query methods ----------------
+    @staticmethod
+    def get_all_users():
+        """Return list of UserRecord objects for all users ordered by username."""
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT rowid as user_id, username, role FROM users ORDER BY username")
+        rows = cursor.fetchall()
+        connection.close()
+        return [UserRecord(*row) for row in rows]
+
+    @staticmethod
+    def get_user_by_id(user_id):
+        """Return a single UserRecord by rowid (internal autoincrement)."""
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT rowid as user_id, username, role FROM users WHERE rowid = ?", (user_id,))
+        row = cursor.fetchone()
+        connection.close()
+        return UserRecord(*row) if row else None
