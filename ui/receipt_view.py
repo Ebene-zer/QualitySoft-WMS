@@ -1,28 +1,35 @@
 import tempfile
 import webbrowser
+
+from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QPushButton, QMessageBox, QComboBox, QCompleter, QFileDialog
+    QComboBox,
+    QCompleter,
+    QFileDialog,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
-from PyQt6.QtCore import Qt, QObject, QEvent
-
-
-from models.invoice import Invoice
 from database.db_handler import get_db_connection
-
+from models.invoice import Invoice
 
 try:
-    from PyQt6.QtPdfWidgets import QPdfView
-    from PyQt6.QtPdf import QPdfDocument
     HAS_QPDFVIEW = True
 except ImportError:
     HAS_QPDFVIEW = False
+
+
 class SelectAllOnFocus(QObject):
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.FocusIn:
             obj.selectAll()
         return False
+
 
 class ReceiptView(QWidget):
     def __init__(self):
@@ -31,7 +38,6 @@ class ReceiptView(QWidget):
         self.layout = QVBoxLayout()
 
         focus_filter = SelectAllOnFocus()
-
 
         self.invoice_dropdown = QComboBox()
         self.invoice_dropdown.setEditable(True)
@@ -42,7 +48,6 @@ class ReceiptView(QWidget):
         self.invoice_dropdown.lineEdit().returnPressed.connect(self.show_receipt)
         self.layout.addWidget(QLabel("Select Invoice:"))
         self.layout.addWidget(self.invoice_dropdown)
-
 
         self.show_receipt_button = QPushButton("Load Invoice")
         self.show_receipt_button.clicked.connect(self.show_receipt)
@@ -109,7 +114,7 @@ class ReceiptView(QWidget):
         self.invoice_dropdown.clear()
         invoices = Invoice.get_all_invoices()
         # Show newly created invoices at the top
-        invoices = sorted(invoices, key=lambda inv: getattr(inv, 'invoice_id', 0), reverse=True)
+        invoices = sorted(invoices, key=lambda inv: getattr(inv, "invoice_id", 0), reverse=True)
         invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GH¢ {inv.total_amount:,.2f}" for inv in invoices]
         self.invoice_dropdown.addItems(invoice_strs)
         self.invoice_completer.setModel(self.invoice_dropdown.model())
@@ -139,7 +144,7 @@ class ReceiptView(QWidget):
         formatted = Invoice.format_receipt_data(invoice, wholesale_number)
 
         # Remove previous details if any
-        if hasattr(self, 'details_label'):
+        if hasattr(self, "details_label"):
             self.layout.removeWidget(self.details_label)
             self.details_label.deleteLater()
         # Use rich text so the description (label) and actual data have different font styles

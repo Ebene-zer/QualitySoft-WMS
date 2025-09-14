@@ -1,11 +1,21 @@
+from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QMessageBox,
-    QComboBox, QCompleter, QTableWidget, QTableWidgetItem, QHBoxLayout
+    QComboBox,
+    QCompleter,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QObject, QEvent, pyqtSignal
+
 from models.customer import Customer
-from models.product import Product
 from models.invoice import Invoice
+from models.product import Product
 
 
 class SelectAllOnFocus(QObject):
@@ -172,10 +182,12 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setRowCount(0)
         for row_idx, item in enumerate(self.items):
             self.invoice_items_table.insertRow(row_idx)
-            self.invoice_items_table.setItem(row_idx, 0, QTableWidgetItem(item['product_name']))
-            self.invoice_items_table.setItem(row_idx, 1, QTableWidgetItem(str(item['quantity'])))
+            self.invoice_items_table.setItem(row_idx, 0, QTableWidgetItem(item["product_name"]))
+            self.invoice_items_table.setItem(row_idx, 1, QTableWidgetItem(str(item["quantity"])))
             self.invoice_items_table.setItem(row_idx, 2, QTableWidgetItem(f"{item['unit_price']:.2f}"))
-            self.invoice_items_table.setItem(row_idx, 3, QTableWidgetItem(f"{item['quantity'] * item['unit_price']:.2f}"))
+            self.invoice_items_table.setItem(
+                row_idx, 3, QTableWidgetItem(f"{item['quantity'] * item['unit_price']:.2f}")
+            )
 
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
@@ -192,26 +204,33 @@ class InvoiceView(QWidget):
         product = Product.get_product_by_id(product_id)
 
         # Consider quantities already added to the current invoice for this product
-        existing_qty = sum(it['quantity'] for it in self.items if it['product_id'] == product_id)
+        existing_qty = sum(it["quantity"] for it in self.items if it["product_id"] == product_id)
         if existing_qty + quantity > product.stock_quantity:
-            QMessageBox.warning(self, "Low Stock", f"Only {product.stock_quantity - existing_qty} additional units available (already added: {existing_qty}).")
+            QMessageBox.warning(
+                self,
+                "Low Stock",
+                f"Only {product.stock_quantity - existing_qty} additional units available "
+                f"(already added: {existing_qty}).",
+            )
             return
 
         # If product already in invoice items, merge quantities instead of adding duplicate rows
         merged = False
         for it in self.items:
-            if it['product_id'] == product_id:
-                it['quantity'] += quantity
+            if it["product_id"] == product_id:
+                it["quantity"] += quantity
                 merged = True
                 break
 
         if not merged:
-            self.items.append({
-                "product_id": product.product_id,
-                "quantity": quantity,
-                "unit_price": product.price,
-                "product_name": product.name  # Store product name for display
-            })
+            self.items.append(
+                {
+                    "product_id": product.product_id,
+                    "quantity": quantity,
+                    "unit_price": product.price,
+                    "product_name": product.name,  # Store product name for display
+                }
+            )
 
         self.load_invoice_items_table()
         self.update_total()
@@ -231,25 +250,32 @@ class InvoiceView(QWidget):
         # Find the item to update
         target = None
         for item in self.items:
-            if item['product_name'] == product_name:
+            if item["product_name"] == product_name:
                 target = item
                 break
         if not target:
             QMessageBox.warning(self, "Error", "Selected item not found in invoice items.")
             return
 
-        product = Product.get_product_by_id(target['product_id'])
+        product = Product.get_product_by_id(target["product_id"])
         if product is None:
             QMessageBox.warning(self, "Error", "Product not found.")
             return
 
         # Compute quantity reserved by other lines for same product
-        other_reserved = sum(it['quantity'] for it in self.items if it['product_id'] == target['product_id'] and it is not target)
+        other_reserved = sum(
+            it["quantity"] for it in self.items if it["product_id"] == target["product_id"] and it is not target
+        )
         if other_reserved + quantity > product.stock_quantity:
-            QMessageBox.warning(self, "Low Stock", f"Only {product.stock_quantity - other_reserved} units available for this product (others reserved: {other_reserved}).")
+            QMessageBox.warning(
+                self,
+                "Low Stock",
+                f"Only {product.stock_quantity - other_reserved} units available for this product "
+                f"(others reserved: {other_reserved}).",
+            )
             return
 
-        target['quantity'] = quantity
+        target["quantity"] = quantity
         self.load_invoice_items_table()
         self.update_total()
         self.quantity_input.clear()
@@ -260,13 +286,13 @@ class InvoiceView(QWidget):
             QMessageBox.warning(self, "Select Item", "Please select an item to delete.")
             return
         product_name = self.invoice_items_table.item(selected, 0).text()
-        self.items = [item for item in self.items if item['product_name'] != product_name]
+        self.items = [item for item in self.items if item["product_name"] != product_name]
         self.load_invoice_items_table()
         self.update_total()
         self.quantity_input.clear()
 
     def update_total(self):
-        subtotal = sum(item['quantity'] * item['unit_price'] for item in self.items)
+        subtotal = sum(item["quantity"] * item["unit_price"] for item in self.items)
         try:
             discount = float(self.discount_input.text() or 0)
         except ValueError:
@@ -277,8 +303,9 @@ class InvoiceView(QWidget):
             tax = 0.0
         total = subtotal - discount + tax
         # Update using rich-text so description and value have different styles
-        self.total_label.setTextFormat(Qt.TextFormat.RichText)
-        self.total_label.setText(f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>GH¢ {total:,.2f}</span>")
+        self.total_label.setText(
+            f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>GH¢ {total:,.2f}</span>"
+        )
 
     def save_invoice(self):
         if not self.items:
@@ -383,7 +410,7 @@ class InvoiceView(QWidget):
     def handle_discount_input(self):
         text = self.discount_input.text()
         try:
-            value = float(text) if text else 0.0
+            float(text) if text else 0.0
             self.discount_input.setStyleSheet("")
         except ValueError:
             self.discount_input.setStyleSheet("background-color: #ffcccc;")
@@ -391,7 +418,7 @@ class InvoiceView(QWidget):
     def handle_tax_input(self):
         text = self.tax_input.text()
         try:
-            value = float(text) if text else 0.0
+            float(text) if text else 0.0
             self.tax_input.setStyleSheet("")
         except ValueError:
             self.tax_input.setStyleSheet("background-color: #ffcccc;")

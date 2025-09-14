@@ -1,8 +1,10 @@
 import pytest
+
+from database.db_handler import get_db_connection
+from models.customer import Customer
 from models.invoice import Invoice
 from models.product import Product
-from models.customer import Customer
-from database.db_handler import get_db_connection
+
 
 @pytest.fixture()
 def seed_invoice_env():
@@ -10,9 +12,12 @@ def seed_invoice_env():
     Customer.add_customer("Alice", "0123456789", "Wonderland")
     Product.add_product("Soap", 2.5, 100)
     Product.add_product("Brush", 1.0, 50)
-    conn = get_db_connection(); cur = conn.cursor()
-    cur.execute("SELECT customer_id FROM customers LIMIT 1"); customer_id = cur.fetchone()[0]
-    cur.execute("SELECT product_id FROM products ORDER BY product_id"); product_ids = [r[0] for r in cur.fetchall()]
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT customer_id FROM customers LIMIT 1")
+    customer_id = cur.fetchone()[0]
+    cur.execute("SELECT product_id FROM products ORDER BY product_id")
+    product_ids = [r[0] for r in cur.fetchall()]
     conn.close()
     return customer_id, product_ids
 
@@ -26,7 +31,8 @@ def test_create_invoice_success_and_stock_reduction(seed_invoice_env):
     invoice_id = Invoice.create_invoice(customer_id, items, discount=2.5, tax=1.0)
     assert isinstance(invoice_id, int)
     # Verify stock decreased
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT stock_quantity FROM products WHERE product_id=?", (product_ids[0],))
     stock_after = cur.fetchone()[0]
     conn.close()
@@ -51,7 +57,8 @@ def test_update_invoice_adjusts_stock(seed_invoice_env):
     customer_id, product_ids = seed_invoice_env
     orig_items = [{"product_id": product_ids[0], "quantity": 5, "unit_price": 2.5}]
     invoice_id = Invoice.create_invoice(customer_id, orig_items)
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT stock_quantity FROM products WHERE product_id=?", (product_ids[0],))
     stock_after_create = cur.fetchone()[0]
     new_items = [
@@ -72,13 +79,15 @@ def test_delete_invoice_restores_stock(seed_invoice_env):
     customer_id, product_ids = seed_invoice_env
     items = [{"product_id": product_ids[0], "quantity": 4, "unit_price": 2.5}]
     invoice_id = Invoice.create_invoice(customer_id, items)
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT stock_quantity FROM products WHERE product_id=?", (product_ids[0],))
     after_create = cur.fetchone()[0]
     assert after_create == 96
     conn.close()
     Invoice.delete_invoice(invoice_id)
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT stock_quantity FROM products WHERE product_id=?", (product_ids[0],))
     after_delete = cur.fetchone()[0]
     conn.close()
@@ -105,7 +114,8 @@ def test_create_invoice_with_duplicate_product_lines(seed_invoice_env):
     ]
     invoice_id = Invoice.create_invoice(customer_id, items)
     assert isinstance(invoice_id, int)
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT stock_quantity FROM products WHERE product_id=?", (pid,))
     remaining = cur.fetchone()[0]
     conn.close()
@@ -121,7 +131,8 @@ def test_create_invoice_duplicate_lines_insufficient_stock(seed_invoice_env):
     ]
     with pytest.raises(ValueError):
         Invoice.create_invoice(customer_id, items)
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT stock_quantity FROM products WHERE product_id=?", (pid,))
     remaining = cur.fetchone()[0]
     conn.close()

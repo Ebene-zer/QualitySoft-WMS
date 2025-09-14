@@ -1,11 +1,13 @@
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
-from ui.receipt_view import SelectAllOnFocus, ReceiptView
+from ui.receipt_view import ReceiptView, SelectAllOnFocus
 
 pytestmark = [pytest.mark.usefixtures("qapp")]
+
 
 class TestSelectAllOnFocus:
     def test_eventFilter_focus_in(self):
@@ -17,27 +19,26 @@ class TestSelectAllOnFocus:
         obj.selectAll.assert_called_once()
         assert result is False
 
+
 class TestReceiptView:
     def setup_method(self):
         self.view = ReceiptView()
 
-    @patch('ui.receipt_view.Invoice')
+    @patch("ui.receipt_view.Invoice")
     def test_load_invoices(self, mock_invoice):
-        mock_invoice.get_all_invoices.return_value = [
-            MagicMock(invoice_id=1, customer_name='John', total_amount=100.0)
-        ]
+        mock_invoice.get_all_invoices.return_value = [MagicMock(invoice_id=1, customer_name="John", total_amount=100.0)]
         self.view.load_invoices()
         assert self.view.invoice_dropdown.count() == 1
 
-    @patch('ui.receipt_view.QMessageBox')
-    @patch('ui.receipt_view.Invoice')
+    @patch("ui.receipt_view.QMessageBox")
+    @patch("ui.receipt_view.Invoice")
     def test_show_receipt_no_invoice_selected(self, mock_invoice, mock_msgbox):
         self.view.invoice_dropdown.currentIndex = MagicMock(return_value=-1)
         self.view.show_receipt()
         mock_msgbox.warning.assert_called_once()
 
-    @patch('ui.receipt_view.QMessageBox')
-    @patch('ui.receipt_view.Invoice')
+    @patch("ui.receipt_view.QMessageBox")
+    @patch("ui.receipt_view.Invoice")
     def test_show_receipt_invoice_not_found(self, mock_invoice, mock_msgbox):
         self.view.invoice_dropdown.currentIndex = MagicMock(return_value=0)
         self.view.invoice_dropdown.currentText = MagicMock(return_value="1 - John - GHS 100.00")
@@ -45,9 +46,9 @@ class TestReceiptView:
         self.view.show_receipt()
         mock_msgbox.warning.assert_called_once()
 
-    @patch('ui.receipt_view.QMessageBox')
-    @patch('ui.receipt_view.QFileDialog.getSaveFileName', return_value=('test.pdf', ''))
-    @patch('ui.receipt_view.Invoice')
+    @patch("ui.receipt_view.QMessageBox")
+    @patch("ui.receipt_view.QFileDialog.getSaveFileName", return_value=("test.pdf", ""))
+    @patch("ui.receipt_view.Invoice")
     def test_export_to_pdf_success(self, mock_invoice, mock_file_dialog, mock_msgbox):
         self.view.invoice_dropdown.currentIndex = MagicMock(return_value=0)
         self.view.invoice_dropdown.currentText = MagicMock(return_value="1 - John - GHS 100.00")
@@ -58,13 +59,13 @@ class TestReceiptView:
             "items": [{"product_name": "A", "quantity": 2, "unit_price": 10.0}],
             "discount": 0,
             "tax": 0,
-            "total_amount": 20.0
+            "total_amount": 20.0,
         }
         self.view.export_to_pdf()
         mock_msgbox.information.assert_called_once()
 
-    @patch('ui.receipt_view.QMessageBox')
-    @patch('ui.receipt_view.Invoice')
+    @patch("ui.receipt_view.QMessageBox")
+    @patch("ui.receipt_view.Invoice")
     def test_print_receipt_no_invoice_selected(self, mock_invoice, mock_msgbox):
         self.view.invoice_dropdown.currentIndex = MagicMock(return_value=-1)
         self.view.print_receipt()

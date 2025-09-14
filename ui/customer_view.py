@@ -1,6 +1,14 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
+    QHBoxLayout,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
+
 from models.customer import Customer
 
 
@@ -60,7 +68,7 @@ class CustomerView(QWidget):
         self.setLayout(self.layout)
         self.load_customers()
 
-    #Customer View Style
+    # Customer View Style
     def get_stylesheet(self):
         return """
         QWidget {
@@ -103,7 +111,7 @@ class CustomerView(QWidget):
         }
         """
 
-    #Load added customers
+    # Load added customers
     def load_customers(self):
         self.customer_table.setRowCount(0)
         customers = Customer.get_all_customers()
@@ -113,7 +121,6 @@ class CustomerView(QWidget):
             self.customer_table.setItem(row_idx, 1, QTableWidgetItem(customer.name))
             self.customer_table.setItem(row_idx, 2, QTableWidgetItem(customer.phone_number))
             self.customer_table.setItem(row_idx, 3, QTableWidgetItem(customer.address))
-
 
     # Act upon a click on Add Customer Button
     def add_customer(self):
@@ -138,8 +145,6 @@ class CustomerView(QWidget):
             self.clear_inputs()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to add customer:\n{e}")
-
-
 
     # Act upon a click on Update Customer button
     def update_customer(self):
@@ -170,7 +175,6 @@ class CustomerView(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update customer:\n{e}")
 
-
     # Act upon a click on Delete Customer Button
     def delete_customer(self):
         customer_id = self.get_selected_customer_id()
@@ -179,15 +183,15 @@ class CustomerView(QWidget):
             return
 
         reply = QMessageBox.question(
-            self, "Confirm Delete",
+            self,
+            "Confirm Delete",
             f"Are you sure you want to delete customer {customer_id}?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
             Customer.delete_customer(customer_id)
             QMessageBox.information(self, "Deleted", "Customer deleted.")
             self.load_customers()
-
 
     def get_selected_customer_id(self):
         selected = self.customer_table.currentRow()
@@ -195,7 +199,7 @@ class CustomerView(QWidget):
             return None
         return int(self.customer_table.item(selected, 0).text())
 
-   #Clear Input after usage
+    # Clear Input after usage
     def clear_inputs(self):
         self.name_input.clear()
         self.phone_input.clear()

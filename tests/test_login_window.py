@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
 
@@ -8,14 +9,18 @@ SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 
-with patch('ui.main_window.MainWindow', autospec=True):
+with patch("ui.main_window.MainWindow", autospec=True):
     from ui.login_window import LoginWindow
 
-pytestmark = [pytest.mark.usefixtures("qapp"), pytest.mark.skipif(SKIP_GUI, reason="Skipping GUI tests in headless mode")]
+pytestmark = [
+    pytest.mark.usefixtures("qapp"),
+    pytest.mark.skipif(SKIP_GUI, reason="Skipping GUI tests in headless mode"),
+]
+
 
 class TestLoginWindow:
-    @patch('ui.login_window.QMessageBox')
-    @patch('ui.login_window.User')
+    @patch("ui.login_window.QMessageBox")
+    @patch("ui.login_window.User")
     def test_successful_login(self, mock_user, mock_msgbox):
         mock_user.authenticate.return_value = "Admin"
         window = LoginWindow()
@@ -27,8 +32,8 @@ class TestLoginWindow:
         window.main_window.show.assert_called_once()
         assert not mock_msgbox.warning.called
 
-    @patch('ui.login_window.QMessageBox')
-    @patch('ui.login_window.User')
+    @patch("ui.login_window.QMessageBox")
+    @patch("ui.login_window.User")
     def test_failed_login(self, mock_user, mock_msgbox):
         mock_user.authenticate.return_value = None
         window = LoginWindow()

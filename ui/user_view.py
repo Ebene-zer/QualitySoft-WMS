@@ -1,17 +1,28 @@
-#Import Framework and Library
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QMessageBox, QComboBox, QFrame
-)
-from models.user import User
+# Import Framework and Library
 import sqlite3
-from database.db_handler import get_db_connection
 
-#User View Class
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from database.db_handler import get_db_connection
+from models.user import User
+
+
+# User View Class
 class UserView(QWidget):
     def __init__(self, current_user_role="Manager"):
         super().__init__()
         self.current_user_role = current_user_role
-        #UserView Style
+        # UserView Style
         self.setStyleSheet("""
               QWidget {
                   background-color: #F4F6F7;
@@ -39,11 +50,8 @@ class UserView(QWidget):
               }
           """)
 
-        main_layout = QVBoxLayout() #Set Layout
-
         card = QFrame()
         card.setStyleSheet("background-color: white; border-radius: 10px; padding: 20px;")
-        card_layout = QVBoxLayout()
 
         self.layout = QVBoxLayout()
 
@@ -70,13 +78,10 @@ class UserView(QWidget):
         role_layout.addWidget(self.role_combo)
         self.layout.addLayout(role_layout)
 
-
-
         # Add User Button
         add_button = QPushButton("Add User")
         add_button.clicked.connect(self.add_user)
         self.layout.addWidget(add_button)
-
 
         # User List
         self.user_list = QListWidget()
@@ -88,7 +93,6 @@ class UserView(QWidget):
         update_button.clicked.connect(self.update_user)
         self.layout.addWidget(update_button)
 
-
         # Delete User Button
         delete_button = QPushButton("Delete Selected User")
         delete_button.clicked.connect(self.delete_user)
@@ -97,7 +101,7 @@ class UserView(QWidget):
         self.setLayout(self.layout)
         self.load_users()
 
-    #Load all current Users
+    # Load all current Users
     def load_users(self):
         self.user_list.clear()
         connection = get_db_connection()
@@ -109,7 +113,7 @@ class UserView(QWidget):
         for user in users:
             self.user_list.addItem(f"{user[0]} ({user[1]})")
 
-    #Act Upon Click on Add User
+    # Act Upon Click on Add User
     def add_user(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
@@ -139,7 +143,7 @@ class UserView(QWidget):
         if " (" not in text:
             QMessageBox.warning(self, "Error", "Selected item format is invalid.")
             return
-        username = text.split(" (" )[0]
+        username = text.split(" (")[0]
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("SELECT username, role FROM users WHERE username = ?", (username,))
@@ -153,14 +157,13 @@ class UserView(QWidget):
                 self.role_combo.addItem(user[1])
             self.role_combo.setCurrentText(user[1])
         else:
-             QMessageBox.warning(self, "Error", f"User '{username}' not found in database.")
+            QMessageBox.warning(self, "Error", f"User '{username}' not found in database.")
 
     def update_user(self):
         selected_item = self.user_list.currentItem()
         if not selected_item:
             return
         username = selected_item.text().split(" (")[0]
-        role = self.role_combo.currentText()
         # Prevent editing Admin details unless the current user is Admin
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -185,14 +188,13 @@ class UserView(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Error", str(e))
 
-
-     #Act Upon a click on Delete User
+    # Act Upon a click on Delete User
     def delete_user(self):
         selected_item = self.user_list.currentItem()
         if not selected_item:
             QMessageBox.warning(self, "Select User", "Please select a user to delete.")
             return
-        username = selected_item.text().split(" (" )[0]
+        username = selected_item.text().split(" (")[0]
         # Check if target user is Admin
         connection = get_db_connection()
         cursor = connection.cursor()

@@ -1,5 +1,7 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
+
 from database.db_handler import get_db_connection
+
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
@@ -15,7 +17,6 @@ class SettingsDialog(QDialog):
         self.wholesale_name_edit.setPlaceholderText("Enter wholesale name")
         layout.addWidget(self.wholesale_name_edit)
 
-
         self.label = QLabel("Wholesale Number:")
         layout.addWidget(self.label)
 
@@ -23,13 +24,11 @@ class SettingsDialog(QDialog):
         self.wholesale_edit.setPlaceholderText("Enter wholesale number")
         layout.addWidget(self.wholesale_edit)
 
-
         self.label_address = QLabel("Wholesale Address:")
         layout.addWidget(self.label_address)
         self.wholesale_address_edit = QLineEdit()
         self.wholesale_address_edit.setPlaceholderText("Enter wholesale address")
         layout.addWidget(self.wholesale_address_edit)
-
 
         self.save_btn = QPushButton("Save")
         self.save_btn.clicked.connect(self.save_wholesale_number)
@@ -68,7 +67,10 @@ class SettingsDialog(QDialog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute("UPDATE settings SET wholesale_number=?, wholesale_name=?, wholesale_address=? WHERE id=1", (new_number, new_name, new_address))
+            cur.execute(
+                "UPDATE settings SET wholesale_number=?, wholesale_name=?, wholesale_address=? WHERE id=1",
+                (new_number, new_name, new_address),
+            )
             conn.commit()
             conn.close()
             QMessageBox.information(self, "Saved", "Settings updated successfully.")

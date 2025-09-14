@@ -1,9 +1,12 @@
-from PyQt6.QtWidgets import QFormLayout, QComboBox, QVBoxLayout, QLabel, QWidget, QPushButton, QHBoxLayout
-from PyQt6.QtCore import Qt, QTimer
 import datetime
-from database.db_handler import get_db_connection
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QComboBox, QFormLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+from database.db_handler import get_db_connection
+
 
 # Embedded widget for sales report
 class SalesReportWidget(QWidget):
@@ -18,7 +21,9 @@ class SalesReportWidget(QWidget):
         """)
         self.report_type_box = QComboBox(self)
         self.report_type_box.setMinimumHeight(40)
-        self.report_type_box.setStyleSheet("font-size: 18px; background-color: #e3eafc; border-radius: 8px; padding: 6px;")
+        self.report_type_box.setStyleSheet(
+            "font-size: 18px; background-color: #e3eafc; border-radius: 8px; padding: 6px;"
+        )
         report_types = ["Daily"]
         if self.user_role.lower() in ["admin", "ceo"]:
             report_types += ["Weekly", "Monthly", "Annual"]
@@ -26,13 +31,17 @@ class SalesReportWidget(QWidget):
         layout.addRow("<span style='color:#1a237e;font-weight:bold;'>Report Type:</span>", self.report_type_box)
         self.show_btn = QPushButton("Show Report")
         self.show_btn.setMinimumHeight(38)
-        self.show_btn.setStyleSheet("background-color: #1976d2; color: white; font-size: 16px; border-radius: 8px; padding: 8px 18px;")
+        self.show_btn.setStyleSheet(
+            "background-color: #1976d2; color: white; font-size: 16px; border-radius: 8px; padding: 8px 18px;"
+        )
         layout.addWidget(self.show_btn)
         self.show_btn.clicked.connect(self.generate_sales_report)
         self.result_label = QLabel()
         self.result_label.setWordWrap(True)
         # Remove global bold so HTML controls which parts are bold
-        self.result_label.setStyleSheet("font-size: 18px; color: #263238; padding: 16px; background-color: #e3f2fd; border-radius: 8px;")
+        self.result_label.setStyleSheet(
+            "font-weight: bold; color: #263238; padding: 16px; background-color: #e3f2fd; border-radius: 8px;"
+        )
         # Use rich text so we can style labels and values separately
         self.result_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(self.result_label)
@@ -51,34 +60,46 @@ class SalesReportWidget(QWidget):
         cursor = conn.cursor()
         today = datetime.date.today()
         if report_type == "Daily":
-            iso_start = today.strftime('%Y-%m-%d')
+            iso_start = today.strftime("%Y-%m-%d")
             iso_end = iso_start
             # Try to match both DATE(invoice_date) and invoice_date LIKE 'YYYY-MM-DD%'
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE DATE(invoice_date) = ? OR invoice_date LIKE ?
-            """, (iso_start, f"{iso_start}%"))
+            """,
+                (iso_start, f"{iso_start}%"),
+            )
         elif report_type == "Weekly":
-            iso_start = (today - datetime.timedelta(days=today.weekday())).strftime('%Y-%m-%d')
-            iso_end = today.strftime('%Y-%m-%d')
-            cursor.execute("""
+            iso_start = (today - datetime.timedelta(days=today.weekday())).strftime("%Y-%m-%d")
+            iso_end = today.strftime("%Y-%m-%d")
+            cursor.execute(
+                """
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """, (iso_start, iso_end, iso_start, iso_end))
+            """,
+                (iso_start, iso_end, iso_start, iso_end),
+            )
         elif report_type == "Monthly":
-            iso_start = today.replace(day=1).strftime('%Y-%m-%d')
-            iso_end = today.strftime('%Y-%m-%d')
-            cursor.execute("""
+            iso_start = today.replace(day=1).strftime("%Y-%m-%d")
+            iso_end = today.strftime("%Y-%m-%d")
+            cursor.execute(
+                """
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """, (iso_start, iso_end, iso_start, iso_end))
+            """,
+                (iso_start, iso_end, iso_start, iso_end),
+            )
         elif report_type == "Annual":
-            iso_start = today.replace(month=1, day=1).strftime('%Y-%m-%d')
-            iso_end = today.strftime('%Y-%m-%d')
-            cursor.execute("""
+            iso_start = today.replace(month=1, day=1).strftime("%Y-%m-%d")
+            iso_end = today.strftime("%Y-%m-%d")
+            cursor.execute(
+                """
                 SELECT invoice_date, total_amount FROM invoices
                 WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """, (iso_start, iso_end, iso_start, iso_end))
+            """,
+                (iso_start, iso_end, iso_start, iso_end),
+            )
         else:
             self.result_label.setText("Invalid report type selected.")
             return
@@ -88,30 +109,33 @@ class SalesReportWidget(QWidget):
         total_sales = sum(row[1] for row in rows)
         # Convert ISO dates to Day/Month/Year for display and build HTML output
         try:
-            display_start = datetime.datetime.strptime(iso_start, '%Y-%m-%d').strftime('%d/%m/%Y')
-            display_end = datetime.datetime.strptime(iso_end, '%Y-%m-%d').strftime('%d/%m/%Y')
+            display_start = datetime.datetime.strptime(iso_start, "%Y-%m-%d").strftime("%d/%m/%Y")
+            display_end = datetime.datetime.strptime(iso_end, "%Y-%m-%d").strftime("%d/%m/%Y")
         except Exception:
             display_start = iso_start
             display_end = iso_end
 
         if not rows:
             report_html = (
-                f"<span style='font-weight:Bold;color:#1a237e;'>No sales found</span><br/>"
-                f"<span style='font-weight:Bold;color:#00000e;'>Period:</span> "
-                f"<span style='font-family:Segue UI; font-size:16px; color:#263238;'>{display_start} to {display_end}</span>"
+                f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>No sales found</span><br/>"
+                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
+                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
+                f"{display_start} to {display_end}</span>"
             )
         else:
             report_html = (
-                f"<span style='font-weight:Bold;color:#1a237e;'>{report_type} Sales Report</span><br/>"
-                f"<span style='font-weight:Bold;color:#00000e;'>Period:</span> "
-                f"<span style='font-family:Segue UI; font-size:18px; color:#263238;'>{display_start} to {display_end}</span><br/>"
-                f"<span style='font-weight:Bold;color:#00000e;'>Total Sales:</span> "
-                f"<span style='font-family:Segue UI; font-size:18px; color:#263238;'>GHS{total_sales:,.2f}</span><br/>"
-                f"<span style='font-weight:Bold;color:#00000e;'>Transactions:</span> "
-                f"<span style='font-family:Segue UI; font-size:18px; color:#263238;'>{len(rows)}</span>"
+                f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>{report_type} Sales Report</span><br/>"
+                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
+                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
+                f"{display_start} to {display_end}</span><br/>"
+                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Total Sales:</span> "
+                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>GHS{total_sales:,.2f}</span><br/>"
+                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Transactions:</span> "
+                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>{len(rows)}</span>"
             )
         self.result_label.setText(report_html)
         conn.close()
+
 
 # Embedded widget for graph
 class GraphWidget(QWidget):
@@ -138,7 +162,9 @@ class GraphWidget(QWidget):
         controls_layout.addWidget(self.period_box)
         show_btn = QPushButton("Show Graph")
         show_btn.setMinimumHeight(38)
-        show_btn.setStyleSheet("background-color: #1976d2; color: white; font-size: 16px; border-radius: 8px; padding: 8px 18px;")
+        show_btn.setStyleSheet(
+            "background-color: #1976d2; color: white; font-size: 16px; border-radius: 8px; padding: 8px 18px;"
+        )
         show_btn.clicked.connect(self.show_graph)
         controls_layout.addWidget(show_btn)
         layout.addLayout(controls_layout)
@@ -183,7 +209,7 @@ class GraphWidget(QWidget):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
         if graph_type == "Line Chart":
-            ax.plot(x, y, marker='o')
+            ax.plot(x, y, marker="o")
         else:
             ax.bar(x, y)
         ax.set_xlabel(xlabel)
@@ -191,6 +217,7 @@ class GraphWidget(QWidget):
         ax.set_title(f"Sales by {xlabel}")
         self.figure.tight_layout()
         self.canvas.draw()
+
 
 class MoreDropdown(QWidget):
     def __init__(self, on_option_selected=None, parent=None, user_role=None):

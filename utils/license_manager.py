@@ -1,7 +1,9 @@
 import random
 import string
 from datetime import datetime, timedelta
+
 from database.db_handler import get_db_connection
+
 
 def get_license_row():
     conn = get_db_connection()
@@ -11,12 +13,14 @@ def get_license_row():
     conn.close()
     return row
 
+
 def set_license_field(field, value):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(f"UPDATE license SET {field}=? WHERE id=1", (value,))
     conn.commit()
     conn.close()
+
 
 def is_trial_expired():
     trial_start, _, trial_days = get_license_row()
@@ -33,15 +37,19 @@ def is_trial_expired():
         return True
     return (datetime.now() - start_date).days >= int(trial_days)
 
+
 def generate_product_pin(length=8):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
 
 def set_product_pin(pin):
     set_license_field("product_pin", pin)
 
+
 def check_product_pin(pin):
     _, product_pin, _ = get_license_row()
     return pin == product_pin
+
 
 def set_trial_expiry(minutes=5):
     # Set trial_start to now minus trial_days (in minutes)

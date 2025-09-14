@@ -1,5 +1,5 @@
-import pytest
 from models.user import User
+
 
 class TestUserModel:
     def test_add_and_get_users(self):

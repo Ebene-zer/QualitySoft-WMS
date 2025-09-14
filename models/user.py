@@ -1,13 +1,17 @@
 import hashlib
 import os
+
 from database.db_handler import get_db_connection
+
 
 class UserRecord:
     """Lightweight user record returned by query helpers."""
+
     def __init__(self, user_id, username, role):
         self.user_id = user_id
         self.username = username
         self.role = role
+
 
 class User:
     @staticmethod
@@ -15,12 +19,7 @@ class User:
         """Hash a password for storing."""
         if salt is None:
             salt = os.urandom(16)
-        pwd_hash = hashlib.pbkdf2_hmac(
-            'sha256',
-            password.encode('utf-8'),
-            salt,
-            100_000
-        )
+        pwd_hash = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
         return salt.hex() + pwd_hash.hex()
 
     @staticmethod
@@ -30,19 +29,15 @@ class User:
         hash_hex = stored_password_hash[32:]
 
         salt = bytes.fromhex(salt_hex)
-        attempt_hash = hashlib.pbkdf2_hmac(
-            'sha256',
-            password_attempt.encode('utf-8'),
-            salt,
-            100_000
-        )
+        attempt_hash = hashlib.pbkdf2_hmac("sha256", password_attempt.encode("utf-8"), salt, 100_000)
         return attempt_hash.hex() == hash_hex
 
     @staticmethod
     def add_user(username, password, role):
         """Add a new user with hashed password."""
-        from database.db_handler import get_db_connection
         import sqlite3
+
+        from database.db_handler import get_db_connection
 
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -50,10 +45,13 @@ class User:
         password_hash = User.hash_password(password)  # Use the correct hashing method
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO users (username, password_hash, role)
                 VALUES (?, ?, ?)
-            """, (username, password_hash, role))
+            """,
+                (username, password_hash, role),
+            )
             connection.commit()
         except sqlite3.IntegrityError as e:
             connection.rollback()
@@ -85,9 +83,12 @@ class User:
         """Get the role of a user by username."""
         connection = get_db_connection()
         cursor = connection.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT role FROM users WHERE username = ?
-        """, (username,))
+        """,
+            (username,),
+        )
         result = cursor.fetchone()
         connection.close()
 
@@ -114,7 +115,7 @@ class User:
         try:
             cursor.execute(
                 "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE username = ?",
-                (new_username, hashed_password, new_role, old_username)
+                (new_username, hashed_password, new_role, old_username),
             )
             connection.commit()
         finally:

@@ -1,5 +1,5 @@
-import pytest
 from models.product import Product
+
 
 class TestProductModel:
     def test_add_and_get_products(self):

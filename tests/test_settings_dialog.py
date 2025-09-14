@@ -1,6 +1,8 @@
 import os
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from database.db_handler import get_db_connection
 from ui.settings_dialog import SettingsDialog
 
@@ -8,23 +10,26 @@ os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 pytestmark = [pytest.mark.usefixtures("qapp")]  # need QApplication
 
+
 class TestSettingsDialog:
-    @patch('ui.settings_dialog.QMessageBox')
+    @patch("ui.settings_dialog.QMessageBox")
     def test_load_and_save_valid(self, mock_msg):
         dlg = SettingsDialog()
         dlg.wholesale_name_edit.setText("MyStore")
         dlg.wholesale_edit.setText("0551234567")
         dlg.wholesale_address_edit.setText("Accra Road")
         dlg.save_wholesale_number()
-        conn = get_db_connection(); cur = conn.cursor()
+        conn = get_db_connection()
+        cur = conn.cursor()
         cur.execute("SELECT wholesale_number, wholesale_name, wholesale_address FROM settings WHERE id=1")
-        row = cur.fetchone(); conn.close()
-        assert row[0] == '0551234567'
-        assert row[1] == 'MyStore'
-        assert row[2] == 'Accra Road'
+        row = cur.fetchone()
+        conn.close()
+        assert row[0] == "0551234567"
+        assert row[1] == "MyStore"
+        assert row[2] == "Accra Road"
         mock_msg.information.assert_called_once()
 
-    @patch('ui.settings_dialog.QMessageBox')
+    @patch("ui.settings_dialog.QMessageBox")
     def test_invalid_inputs(self, mock_msg):
         dlg = SettingsDialog()
         # Invalid number

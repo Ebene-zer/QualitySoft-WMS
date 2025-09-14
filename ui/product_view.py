@@ -1,17 +1,25 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QTableWidget, QTableWidgetItem
+    QHBoxLayout,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 from models.product import Product
 
-#Product View Class
+
+# Product View Class
 class ProductView(QWidget):
     def __init__(self):
         super().__init__()
         # Tab style
         self.setStyleSheet(self.get_stylesheet())
 
-        self.layout = QVBoxLayout() #Set Layout
+        self.layout = QVBoxLayout()  # Set Layout
 
         # Input fields
         self.name_input = QLineEdit()
@@ -43,7 +51,7 @@ class ProductView(QWidget):
         self.product_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
         self.layout.addWidget(self.product_table)
 
-        #Set Button Layout
+        # Set Button Layout
         button_layout = QHBoxLayout()
 
         # Update Product Button
@@ -62,7 +70,7 @@ class ProductView(QWidget):
         self.load_products()
         self.show_low_stock_alert()
 
-#Product View Style
+    # Product View Style
     def get_stylesheet(self):
         return """
         QWidget {
@@ -105,7 +113,7 @@ class ProductView(QWidget):
         }
         """
 
-    #Load Products Method
+    # Load Products Method
     def load_products(self):
         self.product_table.setRowCount(0)
         products = Product.get_all_products()
@@ -116,7 +124,7 @@ class ProductView(QWidget):
             self.product_table.setItem(row_idx, 2, QTableWidgetItem(str(product.price)))
             self.product_table.setItem(row_idx, 3, QTableWidgetItem(str(product.stock_quantity)))
 
-    #Act upon a click on Add Product Button
+    # Act upon a click on Add Product Button
     def add_product(self):
         name = self.name_input.text().strip()
         try:
@@ -130,17 +138,14 @@ class ProductView(QWidget):
             QMessageBox.warning(self, "Input Error", "Product name cannot be empty.")
             return
 
-        #Call add_product method from the Product Class and pass the entered values
+        # Call add_product method from the Product Class and pass the entered values
         Product.add_product(name, price, stock)
         QMessageBox.information(self, "Success", "Product added.")
         self.clear_inputs()
         self.load_products()
         self.show_low_stock_alert()
 
-
-
-
-    #Act upon a click on Update Product
+    # Act upon a click on Update Product
     def update_product(self):
         selected = self.product_table.currentRow()
         if selected == -1:
@@ -159,7 +164,6 @@ class ProductView(QWidget):
         self.clear_inputs()
         self.load_products()
 
-
     # Act upon a click on Delete product
     def delete_product(self):
         selected = self.product_table.currentRow()
@@ -170,8 +174,8 @@ class ProductView(QWidget):
         reply = QMessageBox.question(
             self,
             "Confirm Delete",
-            f"Are you sure you want to delete this product?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            "Are you sure you want to delete this product?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
             Product.delete_product(product_id)
@@ -179,9 +183,7 @@ class ProductView(QWidget):
             self.clear_inputs()
             self.load_products()
 
-
-
-    #Clear Input Fields
+    # Clear Input Fields
     def clear_inputs(self):
         self.name_input.clear()
         self.price_input.clear()
@@ -200,4 +202,6 @@ class ProductView(QWidget):
         low_stock_products = Product.get_products_below_stock(10)
         if low_stock_products:
             product_names = ", ".join([f"{p.name} (Stock: {p.stock_quantity})" for p in low_stock_products])
-            QMessageBox.warning(self, "Low Stock Alert", f"The following products have low stock quantity:\n{product_names}")
+            QMessageBox.warning(
+                self, "Low Stock Alert", f"The following products have low stock quantity:\n{product_names}"
+            )

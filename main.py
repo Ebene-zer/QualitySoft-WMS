@@ -1,12 +1,15 @@
 import sys
 import uuid
-from PyQt6.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from datetime import datetime
+
 from PyQt6.QtGui import QGuiApplication
-from ui.login_window import LoginWindow
+from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
+
 from database.db_handler import initialize_database
 from models.user import User
-from utils.license_manager import is_trial_expired, check_product_pin, set_license_field
-from datetime import datetime
+from ui.login_window import LoginWindow
+from utils.license_manager import check_product_pin, is_trial_expired, set_license_field
+
 
 class PinDialog(QDialog):
     def __init__(self):
@@ -51,6 +54,7 @@ class PinDialog(QDialog):
                 QMessageBox.warning(self, "Invalid Pin", "The Product Pin is incorrect.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred during pin validation: {e}")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

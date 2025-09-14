@@ -1,17 +1,15 @@
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
-)
-from PyQt6.QtGui import QFont
 import sys
 
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QPushButton, QStackedWidget, QVBoxLayout, QWidget
 
-from ui.product_view import ProductView
 from ui.customer_view import CustomerView
 from ui.invoice_view import InvoiceView
-from ui.receipt_view import ReceiptView
-from ui.user_view import UserView
 from ui.more import MoreDropdown
+from ui.product_view import ProductView
+from ui.receipt_view import ReceiptView
 from ui.settings_dialog import SettingsDialog
+from ui.user_view import UserView
 
 
 class MainWindow(QWidget):
@@ -59,13 +57,11 @@ class MainWindow(QWidget):
         create_nav_button("Products", 1, 40, 11)
         create_nav_button("Customers", 2, 40, 11)
         create_nav_button("Invoice", 3, 40, 11)
-        create_nav_button("Receipts", 4, 40,  11)
+        create_nav_button("Receipts", 4, 40, 11)
 
         # Track the index for the Users tab
-        users_tab_index = 5
         if self.user_role.lower() in ["admin", "ceo"]:
             create_nav_button("Users", 5, 40, 11)
-            users_tab_index = 6
 
         btn_logout = QPushButton("Logout")
         btn_logout.setFixedHeight(40)
@@ -89,7 +85,9 @@ class MainWindow(QWidget):
             btn_settings = QPushButton("Settings")
             btn_settings.setFixedHeight(40)
             btn_settings.setFont(QFont("Segue UI", 11, QFont.Weight.Medium))
-            btn_settings.setStyleSheet("background-color: #3498db; color: white; border-radius: 6px; padding: 8px 14px;")
+            btn_settings.setStyleSheet(
+                "background-color: #3498db; color: white; border-radius: 6px; padding: 8px 14px;"
+            )
             btn_settings.clicked.connect(self.open_settings_dialog)
             button_bar_layout.addWidget(btn_settings)
             self.nav_buttons.append(btn_settings)
@@ -179,6 +177,7 @@ class MainWindow(QWidget):
 
     def logout(self):
         from ui.login_window import LoginWindow
+
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()

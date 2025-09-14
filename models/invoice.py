@@ -1,8 +1,10 @@
 from datetime import datetime
+
 from database.db_handler import get_db_connection
 from models.product import Product
 
-#Invoice Class
+
+# Invoice Class
 class Invoice:
     def __init__(self, invoice_id, customer_id, invoice_date, discount, tax, total_amount):
         self.invoice_id = invoice_id
@@ -12,7 +14,7 @@ class Invoice:
         self.tax = tax
         self.total_amount = total_amount
 
-    #Create Invoice method
+    # Create Invoice method
     @staticmethod
     def create_invoice(customer_id, items, discount=0.0, tax=0.0):
         # Use a DB transaction to validate and reserve stock atomically to avoid race conditions.
@@ -25,8 +27,8 @@ class Invoice:
             # Aggregate requested quantities per product_id
             requested = {}
             for it in items:
-                pid = it['product_id']
-                requested[pid] = requested.get(pid, 0) + int(it['quantity'])
+                pid = it["product_id"]
+                requested[pid] = requested.get(pid, 0) + int(it["quantity"])
 
             # Validate stock for each product against current DB value
             for pid, req_qty in requested.items():
@@ -36,31 +38,42 @@ class Invoice:
                     raise ValueError(f"Product ID {pid} not found.")
                 stock = row[0]
                 if req_qty > stock:
-                    raise ValueError(f"Insufficient stock for product ID {pid}. Available: {stock}, requested: {req_qty}.")
+                    raise ValueError(
+                        f"Insufficient stock for product ID {pid}. Available: {stock}, requested: {req_qty}."
+                    )
 
             # All validations passed; insert invoice
-            subtotal = sum(int(item['quantity']) * float(item['unit_price']) for item in items)
+            subtotal = sum(int(item["quantity"]) * float(item["unit_price"]) for item in items)
             total_after_discount = subtotal - float(discount) + float(tax)
             invoice_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO invoices (customer_id, invoice_date, discount, tax, total_amount)
                 VALUES (?, ?, ?, ?, ?)
-            """, (customer_id, invoice_date, discount, tax, total_after_discount))
+            """,
+                (customer_id, invoice_date, discount, tax, total_after_discount),
+            )
             invoice_id = cursor.lastrowid
 
             # Insert invoice_items and decrement stock in the same transaction
             for item in items:
-                product_id = item['product_id']
-                quantity = int(item['quantity'])
-                unit_price = float(item['unit_price'])
+                product_id = item["product_id"]
+                quantity = int(item["quantity"])
+                unit_price = float(item["unit_price"])
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price)
                     VALUES (?, ?, ?, ?)
-                """, (invoice_id, product_id, quantity, unit_price))
+                """,
+                    (invoice_id, product_id, quantity, unit_price),
+                )
 
-                cursor.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?", (quantity, product_id))
+                cursor.execute(
+                    "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?",
+                    (quantity, product_id),
+                )
 
             connection.commit()
             return invoice_id
@@ -70,7 +83,7 @@ class Invoice:
         finally:
             connection.close()
 
-    #Update Invoice
+    # Update Invoice
     @staticmethod
     def update_invoice(invoice_id, customer_id, items, discount=0.0, tax=0.0):
         connection = get_db_connection()
@@ -82,7 +95,10 @@ class Invoice:
             cursor.execute("SELECT product_id, quantity FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
             old_items = cursor.fetchall()
             for product_id, quantity in old_items:
-                cursor.execute("UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?", (quantity, product_id))
+                cursor.execute(
+                    "UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?",
+                    (quantity, product_id),
+                )
 
             # Remove old invoice items
             cursor.execute("DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
@@ -90,8 +106,8 @@ class Invoice:
             # Aggregate requested quantities for the new items
             requested = {}
             for it in items:
-                pid = it['product_id']
-                requested[pid] = requested.get(pid, 0) + int(it['quantity'])
+                pid = it["product_id"]
+                requested[pid] = requested.get(pid, 0) + int(it["quantity"])
 
             # Validate stock availability for each product
             for pid, req_qty in requested.items():
@@ -101,27 +117,38 @@ class Invoice:
                     raise ValueError(f"Product ID {pid} not found.")
                 stock = row[0]
                 if req_qty > stock:
-                    raise ValueError(f"Insufficient stock for product ID {pid}. Available: {stock}, requested: {req_qty}.")
+                    raise ValueError(
+                        f"Insufficient stock for product ID {pid}. Available: {stock}, requested: {req_qty}."
+                    )
 
             # Update invoice header
-            subtotal = sum(int(item['quantity']) * float(item['unit_price']) for item in items)
+            subtotal = sum(int(item["quantity"]) * float(item["unit_price"]) for item in items)
             total_after_discount = subtotal - float(discount) + float(tax)
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE invoices
                 SET customer_id = ?, discount = ?, tax = ?, total_amount = ?
                 WHERE invoice_id = ?
-            """, (customer_id, discount, tax, total_after_discount, invoice_id))
+            """,
+                (customer_id, discount, tax, total_after_discount, invoice_id),
+            )
 
             # Insert new invoice_items and decrement stock
             for item in items:
-                product_id = item['product_id']
-                quantity = int(item['quantity'])
-                unit_price = float(item['unit_price'])
-                cursor.execute("""
+                product_id = item["product_id"]
+                quantity = int(item["quantity"])
+                unit_price = float(item["unit_price"])
+                cursor.execute(
+                    """
                     INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price)
                     VALUES (?, ?, ?, ?)
-                """, (invoice_id, product_id, quantity, unit_price))
-                cursor.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?", (quantity, product_id))
+                """,
+                    (invoice_id, product_id, quantity, unit_price),
+                )
+                cursor.execute(
+                    "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?",
+                    (quantity, product_id),
+                )
 
             connection.commit()
         except Exception:
@@ -130,8 +157,7 @@ class Invoice:
         finally:
             connection.close()
 
-
-    #Delete Invoice
+    # Delete Invoice
     @staticmethod
     def delete_invoice(invoice_id):
         connection = get_db_connection()
@@ -150,8 +176,7 @@ class Invoice:
         connection.commit()
         connection.close()
 
-
-    #Get all Invoice
+    # Get all Invoice
     @staticmethod
     def get_all_invoices():
         connection = get_db_connection()
@@ -167,25 +192,35 @@ class Invoice:
         # Return list of simple objects or named tuples for attribute access
         invoices = []
         for row in rows:
-            invoice = type('InvoiceRecord', (object,), {})()
+            invoice = type("InvoiceRecord", (object,), {})()
             invoice.invoice_id = row[0]
             invoice.customer_name = row[1]
             invoice.total_amount = row[2]
             invoices.append(invoice)
         return invoices
 
-    #Get to Invoice by ID
+    # Get to Invoice by ID
     @staticmethod
     def get_invoice_by_id(invoice_id):
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        cursor.execute("""
-            SELECT i.invoice_id, c.name, i.invoice_date, i.discount, i.tax, i.total_amount, i.customer_id, c.phone_number
+        cursor.execute(
+            """
+            SELECT i.invoice_id,
+                   c.name,
+                   i.invoice_date,
+                   i.discount,
+                   i.tax,
+                   i.total_amount,
+                   i.customer_id,
+                   c.phone_number
             FROM invoices i
             JOIN customers c ON i.customer_id = c.customer_id
             WHERE i.invoice_id = ?
-        """, (invoice_id,))
+            """,
+            (invoice_id,),
+        )
         row = cursor.fetchone()
 
         if not row:
@@ -202,23 +237,23 @@ class Invoice:
             "total_amount": row[5] if len(row) > 5 else None,
             "customer_id": row[6] if len(row) > 6 else None,
             "customer_number": row[7] if len(row) > 7 else None,
-            "items": []
+            "items": [],
         }
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT p.name, ii.quantity, ii.unit_price
             FROM invoice_items ii
             JOIN products p ON ii.product_id = p.product_id
             WHERE ii.invoice_id = ?
-        """, (invoice_id,))
+        """,
+            (invoice_id,),
+        )
         items = cursor.fetchall()
 
         connection.close()
 
-        invoice["items"] = [
-            {"product_name": item[0], "quantity": item[1], "unit_price": item[2]}
-            for item in items
-        ]
+        invoice["items"] = [{"product_name": item[0], "quantity": item[1], "unit_price": item[2]} for item in items]
 
         return invoice
 
@@ -279,19 +314,18 @@ class Invoice:
         customer_number = invoice.get("customer_number", "N/A")
         # Defensive extraction of contact number
         contact_number = str(wholesale_number)
-        if contact_number.lower().startswith('wholesale contact:'):
+        if contact_number.lower().startswith("wholesale contact:"):
             contact_number = contact_number[18:]
-        wholesale_contact = f"Wholesale Contact: {contact_number}"
         items = [
             [
                 item["product_name"],
                 str(item["quantity"]),
                 f"{item['unit_price']:.2f}",
-                f"{item['quantity'] * item['unit_price']:.2f}"
+                f"{item['quantity'] * item['unit_price']:.2f}",
             ]
             for item in invoice["items"]
         ]
-        total_items = sum(item['quantity'] for item in invoice["items"])
+        total_items = sum(item["quantity"] for item in invoice["items"])
         discount = f"{invoice.get('discount', 0):.2f}"
         tax = f"{invoice.get('tax', 0):.2f}"
         total = f"{invoice.get('total_amount', 0):.2f}"
@@ -306,16 +340,17 @@ class Invoice:
             "total_items": total_items,
             "discount": discount,
             "tax": tax,
-            "total": total
+            "total": total,
         }
 
     @staticmethod
     def export_receipt_to_pdf(formatted_data, file_path):
-        from reportlab.lib.pagesizes import A4
         from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
         doc = SimpleDocTemplate(file_path, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
         styles = getSampleStyleSheet()
         elements = []
@@ -326,7 +361,7 @@ class Invoice:
             fontSize=18,
             leading=22,
             spaceAfter=10,
-            fontName="Helvetica-Bold"
+            fontName="Helvetica-Bold",
         )
         elements.append(Paragraph(Invoice.get_wholesale_name(), title_style))
         # Minimal font for contact and address
@@ -338,33 +373,59 @@ class Invoice:
             textColor=colors.darkgray,
             spaceAfter=8,
         )
-        contact_line = f"Contact: {formatted_data.get('wholesale_contact', '')} | Location: {formatted_data.get('wholesale_address', '')}"
+        contact_line = (
+            "Contact: "
+            f"{formatted_data.get('wholesale_contact', '')} | Location: "
+            f"{formatted_data.get('wholesale_address', '')}"
+        )
         elements.append(Paragraph(contact_line, contact_address_style))
         # Use inline styling so labels (descriptions) and data use distinct fonts/weights
         # ReportLab's Paragraph supports <b> and <font> tags for simple inline styling.
-        elements.append(Paragraph(f"<b>Invoice Number:</b> <font name='Helvetica'>{formatted_data['invoice_number']}</font>", styles["Normal"]))
-        elements.append(Paragraph(f"<b>Date:</b> <font name='Helvetica'>{formatted_data['invoice_date']}</font>", styles["Normal"]))
-        elements.append(Paragraph(f"<b>Customer Name:</b> <font name='Helvetica'>{formatted_data['customer_name']}</font>", styles["Normal"]))
-        elements.append(Paragraph(f"<b>Customer Number:</b> <font name='Helvetica'>{formatted_data['customer_number']}</font>", styles["Normal"]))
+        elements.append(
+            Paragraph(
+                f"<b>Invoice Number:</b> <font name='Helvetica'>{formatted_data['invoice_number']}</font>",
+                styles["Normal"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"<b>Date:</b> <font name='Helvetica'>{formatted_data['invoice_date']}</font>",
+                styles["Normal"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"<b>Customer Name:</b> <font name='Helvetica'>{formatted_data['customer_name']}</font>",
+                styles["Normal"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"<b>Customer Number:</b> <font name='Helvetica'>{formatted_data['customer_number']}</font>",
+                styles["Normal"],
+            )
+        )
         elements.append(Spacer(1, 12))
-        table_data = [
-            ["Product", "Quantity", "Unit Price (GH¢)", "Subtotal (GH¢)"]
-        ] + formatted_data['items']
+        table_data = [["Product", "Quantity", "Unit Price (GH¢)", "Subtotal (GH¢)"]] + formatted_data["items"]
         table_data.append(["", f"Total Items: {formatted_data['total_items']}", "", ""])
-        table = Table(table_data, colWidths=[60*mm, 30*mm, 40*mm, 40*mm])
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightblue),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-            ("TOPPADDING", (0, 0), (-1, 0), 8),
-            ("BOTTOMPADDING", (0, 1), (-1, -2), 6),
-            ("TOPPADDING", (0, 1), (-1, -2), 6),
-            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-            ("BACKGROUND", (0, -1), (-1, -1), colors.whitesmoke),
-        ]))
+        table = Table(table_data, colWidths=[60 * mm, 30 * mm, 40 * mm, 40 * mm])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightblue),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                    ("TOPPADDING", (0, 0), (-1, 0), 8),
+                    ("BOTTOMPADDING", (0, 1), (-1, -2), 6),
+                    ("TOPPADDING", (0, 1), (-1, -2), 6),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                    ("BACKGROUND", (0, -1), (-1, -1), colors.whitesmoke),
+                ]
+            )
+        )
         elements.append(table)
         elements.append(Spacer(1, 16))
         summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=400)
@@ -373,12 +434,7 @@ class Invoice:
         elements.append(Paragraph(f"Total: GH¢ {formatted_data['total']}", summary_style))
         elements.append(Spacer(1, 30))
         footer_style = ParagraphStyle(
-            name="Footer",
-            parent=styles["Normal"],
-            alignment=1,
-            fontSize=11,
-            textColor=colors.grey,
-            spaceBefore=40
+            name="Footer", parent=styles["Normal"], alignment=1, fontSize=11, textColor=colors.grey, spaceBefore=40
         )
         elements.append(Spacer(1, 60))
         elements.append(Paragraph("Thank you for buying from us!", footer_style))

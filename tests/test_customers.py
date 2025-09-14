@@ -1,5 +1,5 @@
-import pytest
 from models.customer import Customer
+
 
 class TestCustomerModel:
     def test_add_and_get_customers(self):

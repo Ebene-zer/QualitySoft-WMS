@@ -1,8 +1,7 @@
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QComboBox, QHBoxLayout
-)
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
+
 from models.user import User
 from ui.main_window import MainWindow
 
@@ -13,8 +12,6 @@ class LoginWindow(QWidget):
         self.setWindowTitle("Login")
         self.resize(450, 300)
         self.setMinimumSize(350, 250)
-
-
 
         self.setStyleSheet("""
             QWidget {
@@ -46,10 +43,9 @@ class LoginWindow(QWidget):
         layout = QVBoxLayout()
 
         title = QLabel("Welcome to QualitySoft WMS")
-        title.setFont(QFont("Arial", 22,QFont.Weight.Bold))
+        title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
-
 
         # Role selection
         role_layout = QVBoxLayout()
@@ -73,7 +69,6 @@ class LoginWindow(QWidget):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.returnPressed.connect(self.authenticate)
 
-
         self.toggle_password_btn = QPushButton()
         self.toggle_password_btn.setCheckable(True)
         self.toggle_password_btn.setFixedWidth(30)
@@ -86,7 +81,6 @@ class LoginWindow(QWidget):
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.toggle_password_btn)
         layout.addLayout(password_layout)
-
 
         # Login button
         login_button = QPushButton("Login")
@@ -117,9 +111,9 @@ class LoginWindow(QWidget):
             else:
                 QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred during login: {e} \n"
-                                                f"Contact Developer if problem persist.")
-
+            QMessageBox.critical(
+                self, "Error", f"An error occurred during login: {e} \n" f"Contact Developer if problem persist."
+            )
 
     def toggle_password_visibility(self):
         if self.toggle_password_btn.isChecked():

@@ -1,5 +1,5 @@
-import sqlite3
 import os
+import sqlite3
 
 # Keep constants for clarity but always re-read environment when connecting.
 DB_ENV_KEY = "WMS_DB_NAME"
@@ -12,6 +12,7 @@ def get_db_connection(db_name=None):
         db_name = os.environ.get(DB_ENV_KEY, DEFAULT_DB_FILENAME)
     connection = sqlite3.connect(db_name, timeout=10)
     return connection
+
 
 def initialize_database():
     connection = get_db_connection()
@@ -87,7 +88,12 @@ def initialize_database():
     # Insert default license row if not exists
     cursor.execute("SELECT COUNT(*) FROM license")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO license (id, trial_start, product_pin, trial_days) VALUES (1, DATE('now'), '', 14)")
+        cursor.execute(
+            """
+            INSERT INTO license (id, trial_start, product_pin, trial_days)
+            VALUES (1, DATE('now'), '', 14)
+            """
+        )
 
     # Create settings table for wholesale number, name, and address
     cursor.execute("""
@@ -101,7 +107,12 @@ def initialize_database():
     # Insert default wholesale number, name, and address if not exists
     cursor.execute("SELECT COUNT(*) FROM settings")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO settings (id, wholesale_number, wholesale_name, wholesale_address) VALUES (1, '', 'Wholesale Name Here', '')")
+        cursor.execute(
+            """
+            INSERT INTO settings (id, wholesale_number, wholesale_name, wholesale_address)
+            VALUES (1, '', 'Wholesale Name Here', '')
+            """
+        )
 
     # Check if wholesale_name and wholesale_address columns exist, add if missing
     cursor.execute("PRAGMA table_info(settings)")
