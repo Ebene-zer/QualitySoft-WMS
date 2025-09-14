@@ -2,7 +2,7 @@ import os
 import unittest
 from datetime import datetime
 from models.invoice import Invoice
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
@@ -39,4 +39,3 @@ class TestInvoiceReceiptFormatting(BaseTestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

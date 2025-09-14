@@ -15,7 +15,7 @@ from models.customer import Customer
 from ui.more import MoreDropdown, GraphWidget, SalesReportWidget
 from ui.receipt_view import ReceiptView
 
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 class TestInvoicePDFExportUnit(BaseTestCase):
     def test_invoice_export_receipt_to_pdf_calls_build(self):
@@ -130,4 +130,3 @@ class TestReceiptViewExportAndPrint(BaseTestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

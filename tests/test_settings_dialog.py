@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from PyQt6.QtWidgets import QApplication
 from database.db_handler import get_db_connection, initialize_database
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
@@ -57,4 +57,3 @@ class TestSettingsDialog(BaseTestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

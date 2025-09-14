@@ -9,7 +9,7 @@ os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 # Import the classes to test
 from ui.receipt_view import SelectAllOnFocus, ReceiptView
-from testes.base_test import BaseTestCase
+from tests.base_test import BaseTestCase
 
 app = QApplication(sys.argv)  # Needed for QWidget tests
 
