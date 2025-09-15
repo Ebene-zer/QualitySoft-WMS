@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 def _migration_1(cursor):
@@ -127,7 +127,22 @@ def _migration_3(cursor):
         cursor.execute("UPDATE settings SET retention_count=10 WHERE id=1")
 
 
-MIGRATIONS = {1: _migration_1, 2: _migration_2, 3: _migration_3}
+def _migration_4(cursor):
+    logger.info("Applying migration 4: add activity_log table")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            username TEXT,
+            action_type TEXT NOT NULL,
+            details TEXT
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(username)")
+
+
+MIGRATIONS = {1: _migration_1, 2: _migration_2, 3: _migration_3, 4: _migration_4}
 
 # --- schema_version helpers --- #
 

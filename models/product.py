@@ -1,4 +1,6 @@
 from database.db_handler import get_db_connection
+from utils.activity_log import log_action
+from utils.session import get_current_username
 
 
 # The product class
@@ -23,6 +25,10 @@ class Product:
         )
         connection.commit()
         connection.close()
+        try:
+            log_action(get_current_username(), "PRODUCT_ADD", f"{name} qty={stock_quantity} price={price}")
+        except Exception:
+            pass
 
     # Update products details method
     @staticmethod
@@ -39,6 +45,14 @@ class Product:
         )
         connection.commit()
         connection.close()
+        try:
+            log_action(
+                get_current_username(),
+                "PRODUCT_UPDATE",
+                f"id={product_id} -> {name} qty={stock_quantity} price={price}",
+            )
+        except Exception:
+            pass
 
     # Delete products
     @staticmethod
@@ -54,6 +68,10 @@ class Product:
         )
         connection.commit()
         connection.close()
+        try:
+            log_action(get_current_username(), "PRODUCT_DELETE", f"id={product_id}")
+        except Exception:
+            pass
 
     # Get all existing products
     @staticmethod

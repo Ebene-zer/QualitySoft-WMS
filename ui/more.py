@@ -1,11 +1,34 @@
+import os
+import sys
+
+# Force non-interactive backend early for CI / headless tests to avoid hangs
+if os.environ.get("QT_QPA_PLATFORM") == "offscreen" or "pytest" in sys.modules:
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")  # Must be set before importing pyplot
+    except Exception:
+        pass
+
 import datetime
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QComboBox, QFormLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from database.db_handler import get_db_connection
+from utils.activity_log import fetch_recent
 
 
 # Embedded widget for sales report
@@ -46,10 +69,9 @@ class SalesReportWidget(QWidget):
         self.result_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(self.result_label)
         self.setLayout(layout)
-        # Auto-generate report if only one option (for Manager)
+        # Always show the button (previously hidden when only one report type)
+        # Still auto-generate when there is only one option for convenience.
         if self.report_type_box.count() == 1:
-            self.show_btn.setVisible(False)
-            # Use QTimer to ensure UI is ready before generating report
             QTimer.singleShot(0, self.generate_sales_report)
         else:
             self.show_btn.setVisible(True)
@@ -219,6 +241,35 @@ class GraphWidget(QWidget):
         self.canvas.draw()
 
 
+# Embedded widget for activity log
+class ActivityLogWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        self.table = QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Timestamp", "User", "Action", "Details"])
+        self.table.setEditTriggers(self.table.EditTrigger.NoEditTriggers)
+        btn_row = QHBoxLayout()
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.clicked.connect(self.load_logs)
+        btn_row.addWidget(self.refresh_btn)
+        layout.addLayout(btn_row)
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+        self.load_logs()
+
+    def load_logs(self):
+        rows = fetch_recent(200)
+        self.table.setRowCount(0)
+        for r_idx, row in enumerate(rows):
+            self.table.insertRow(r_idx)
+            for c_idx, val in enumerate(row):
+                item = QTableWidgetItem(str(val))
+                item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+                self.table.setItem(r_idx, c_idx, item)
+
+
 class MoreDropdown(QWidget):
     def __init__(self, on_option_selected=None, parent=None, user_role=None):
         super().__init__(parent)
@@ -232,6 +283,7 @@ class MoreDropdown(QWidget):
         items = ["Sales Report"]
         if user_role and user_role.lower() in ["admin", "ceo"]:
             items.append("Graph")
+            items.append("Activity Log")
         self.dropdown.addItems(items)
         self.dropdown.setEditable(True)
         self.dropdown.lineEdit().setReadOnly(True)
@@ -270,6 +322,11 @@ class MoreDropdown(QWidget):
             self.content_area.addWidget(graph_widget)
             graph_widget.show()
             self.current_widget = graph_widget
+        elif selected_text == "Activity Log":
+            log_widget = ActivityLogWidget(self)
+            self.content_area.addWidget(log_widget)
+            log_widget.show()
+            self.current_widget = log_widget
         if self.on_option_selected:
             self.on_option_selected(index)
 

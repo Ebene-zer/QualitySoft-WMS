@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 
 from models.user import User
 from ui.main_window import MainWindow
+from utils.session import set_current_user
 
 
 class PasswordChangeDialog(QDialog):
@@ -171,6 +172,7 @@ class LoginWindow(QWidget):
                     pass
 
                 self.main_window = MainWindow(username, role)
+                set_current_user(username, role)
                 self.main_window.show()
                 self.close()
             else:

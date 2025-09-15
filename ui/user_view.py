@@ -15,6 +15,8 @@ from PyQt6.QtWidgets import (
 
 from database.db_handler import get_db_connection
 from models.user import User
+from utils.activity_log import log_action
+from utils.session import get_current_username
 
 
 # User View Class
@@ -130,6 +132,10 @@ class UserView(QWidget):
         try:
             User.add_user(username, password, role)
             QMessageBox.information(self, "Success", f"User '{username}' added as '{role}'.")
+            try:
+                log_action(get_current_username(), "USER_ADD", f"username={username} role={role}")
+            except Exception:
+                pass
             self.load_users()
             self.username_input.clear()
             self.password_input.clear()
@@ -182,6 +188,10 @@ class UserView(QWidget):
         try:
             User.update_user(username, new_username, new_password, new_role)
             QMessageBox.information(self, "Success", f"User '{username}' updated.")
+            try:
+                log_action(get_current_username(), "USER_UPDATE", f"{username} -> {new_username} role={new_role}")
+            except Exception:
+                pass
             self.load_users()
             self.username_input.clear()
             self.password_input.clear()
@@ -211,5 +221,9 @@ class UserView(QWidget):
             cursor.execute("DELETE FROM users WHERE username = ?", (username,))
             connection.commit()
             connection.close()
+            try:
+                log_action(get_current_username(), "USER_DELETE", f"username={username}")
+            except Exception:
+                pass
             QMessageBox.information(self, "Deleted", f"User '{username}' deleted.")
             self.load_users()

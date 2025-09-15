@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
 from models.customer import Customer
 from models.invoice import Invoice
 from models.product import Product
+from utils.activity_log import log_action
+from utils.session import get_current_username
 
 
 class SelectAllOnFocus(QObject):
@@ -371,6 +373,15 @@ class InvoiceView(QWidget):
             return
 
         QMessageBox.information(self, "Success", f"Invoice #{invoice_id} created.")
+        try:
+            total_val = sum(it["quantity"] * it["unit_price"] for it in self.items)
+            log_action(
+                get_current_username(),
+                "INVOICE_CREATE",
+                f"invoice_id={invoice_id} total={total_val:.2f} items={len(self.items)}",
+            )
+        except Exception:
+            pass
         self.reset_invoice_form()
         self.invoice_created.emit()
 
