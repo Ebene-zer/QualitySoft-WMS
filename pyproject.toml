@@ -3,14 +3,15 @@ name = "qualitysoft-wms"
 version = "1.0.0"
 description = "Wholesale Management System (MVP)"
 authors = [ { name = "Ebenezer Fuachie", email = "fuachiee717@gmai.com" } ]
-license = { file = "LICENSE" }
+# Use SPDX license expression (avoids setuptools deprecation warning)
+license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["wholesale", "inventory", "invoicing", "pyqt", "wms"]
 classifiers = [
+  # Removed deprecated explicit license classifier per warning guidance
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
-  "License :: OSI Approved :: Apache Software License",
   "Environment :: Win32 (MS Windows)",
   "Intended Audience :: End Users/Desktop",
   "Topic :: Office/Business"
@@ -26,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest", "coverage"]
+dev = ["ruff", "mypy", "pytest", "pytest-qt", "coverage"]
 
 [project.scripts]
 wms = "main:main"
@@ -76,3 +77,10 @@ source = ["database", "models", "ui", "utils"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+
+[tool.setuptools]
+# Explicitly list packages to avoid "Multiple top-level packages discovered" error during editable install.
+packages = ["database", "models", "ui", "utils"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["icons/*", "docs/*", "tests/*", "*.db"]

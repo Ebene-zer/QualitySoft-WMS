@@ -8,6 +8,7 @@ from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -81,6 +82,40 @@ class PinDialog(QDialog):
             QMessageBox.critical(self, "Error", f"An error occurred during pin validation: {e}")
 
 
+class InitialAdminSetupDialog(QDialog):
+    """Dialog shown when the initial admin account is created; allows copying the temp password."""
+
+    def __init__(self, username: str, temp_password: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Initial Admin Setup")
+        self.setModal(True)
+        self.temp_password = temp_password
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("An admin account was created."))
+        layout.addWidget(QLabel(f"Username: {username}"))
+        layout.addWidget(QLabel("Temporary Password (copy & store securely):"))
+        self.pass_field = QLineEdit(temp_password)
+        self.pass_field.setReadOnly(True)
+        self.pass_field.setCursorPosition(0)
+        layout.addWidget(self.pass_field)
+        btn_row = QHBoxLayout()
+        self.copy_btn = QPushButton("Copy Password")
+        self.close_btn = QPushButton("Close")
+        self.copy_btn.clicked.connect(self.copy_password)
+        self.close_btn.clicked.connect(self.accept)
+        btn_row.addWidget(self.copy_btn)
+        btn_row.addWidget(self.close_btn)
+        layout.addLayout(btn_row)
+        layout.addWidget(QLabel("You must set a new password now (you will be prompted)."))
+        self.setLayout(layout)
+        # Auto-select for quick Ctrl+C
+        self.pass_field.selectAll()
+
+    def copy_password(self):
+        QGuiApplication.clipboard().setText(self.temp_password)
+        QMessageBox.information(self, "Copied", "Temporary password copied to clipboard.")
+
+
 def main() -> int:
     """Application entry point used by console script 'wms'.
 
@@ -92,12 +127,9 @@ def main() -> int:
     if not User.user_exists("admin"):
         temp_pass = secrets.token_urlsafe(10)
         User.add_user("admin", temp_pass, "Admin", must_change_password=True)
-        QMessageBox.information(
-            None,
-            "Initial Admin Setup",
-            f"An admin account was created.\nUsername: admin\nTemporary Password: {temp_pass}\n"
-            "You must set a new password now.",
-        )
+        # Replace simple message box with copy-capable dialog
+        dlg = InitialAdminSetupDialog("admin", temp_pass)
+        dlg.exec()
     if is_trial_expired():
         pin_dialog = PinDialog()
         if pin_dialog.exec() != QDialog.DialogCode.Accepted:
