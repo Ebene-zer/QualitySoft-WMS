@@ -69,6 +69,7 @@ warn_return_any = false
 strict_optional = false
 show_error_codes = true
 pretty = true
+exclude = "(^|/)(build|dist|.*\\.egg-info)/"
 
 [tool.coverage.run]
 branch = true

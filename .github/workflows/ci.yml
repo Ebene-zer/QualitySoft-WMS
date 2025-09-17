@@ -37,12 +37,18 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
-      - name: Install project (with dev extras)
+      - name: Install project and dev tools
+        shell: bash
         run: |
-          pip install --upgrade pip
-          pip install .[dev]
-          # Fallback to requirements if extras fail
-          if [ $? -ne 0 ]; then pip install -r requirements.txt; fi
+          set -x
+          python -m pip install --upgrade pip
+          # Try to install with extras (preferred)
+          if ! pip install ".[dev]"; then
+            echo "Extras install failed; falling back to requirements + explicit dev tools"
+            pip install -r requirements.txt || true
+            pip install pytest pytest-qt coverage ruff mypy
+            pip install -e .
+          fi
 
       - name: Lint (ruff)
         run: ruff check .
