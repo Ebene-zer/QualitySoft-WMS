@@ -38,7 +38,7 @@ def initialize_database():
 
 
 def get_schema_version():
-    """Return current schema version stored in the database (0 if uninitialized)."""
+    """Return the current schema version stored in the database (0 if uninitialized)."""
     conn = get_db_connection()
     cur = conn.cursor()
     try:

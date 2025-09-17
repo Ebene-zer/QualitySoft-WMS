@@ -35,20 +35,32 @@ def _settings_columns():
 
 
 def _get_settings():
+    """Safely fetch backup settings.
+
+    Returns (backup_directory, retention_count) or (None, None) if the settings
+    table/row isn't available yet. This prevents crashes when the database
+    hasn't been initialized (e.g., during tests pointing to a non-existent DB).
+    """
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT backup_directory, retention_count FROM settings WHERE id=1")
-    row = cur.fetchone()
-    conn.close()
-    return row if row else (None, None)
+    try:
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT backup_directory, retention_count FROM settings WHERE id=1")
+            row = cur.fetchone()
+            return row if row else (None, None)
+        except sqlite3.OperationalError:
+            # settings table is missing; fall back to defaults
+            return (None, None)
+    finally:
+        conn.close()
 
 
 def get_configured_backup_dir() -> str | None:
     backup_dir, _ = _get_settings()
     if not backup_dir:
         return None
-    backup_dir = backup_dir.strip()
-    return backup_dir or None
+    backup_dir_str = str(backup_dir).strip()
+    return backup_dir_str or None
 
 
 def get_default_backup_dir() -> str:

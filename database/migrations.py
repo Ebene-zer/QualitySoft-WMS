@@ -168,12 +168,53 @@ def _set_schema_version(cursor, version: int):
         cursor.execute("UPDATE schema_version SET version=?", (version,))
 
 
+# --- post-migration baseline data checks --- #
+
+
+def _ensure_settings_row(cursor):
+    """Ensure there is a settings row with id=1, adding sensible defaults if missing.
+    Safe to run repeatedly and on older schemas (will only use existing columns).
+    """
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'")
+    if cursor.fetchone() is None:
+        return
+    # Does row id=1 exist?
+    try:
+        cursor.execute("SELECT COUNT(*) FROM settings WHERE id=1")
+        if cursor.fetchone()[0] > 0:
+            # Also ensure default values exist for newer columns if NULL
+            cursor.execute("PRAGMA table_info(settings)")
+            cols = [c[1] for c in cursor.fetchall()]
+            if "backup_directory" in cols:
+                cursor.execute("UPDATE settings SET backup_directory=COALESCE(backup_directory, '') WHERE id=1")
+            if "retention_count" in cols:
+                cursor.execute("UPDATE settings SET retention_count=COALESCE(retention_count, 10) WHERE id=1")
+            return
+    except Exception:
+        # If SELECT failed due to schema oddities, just return
+        return
+    # Insert a new row with available columns
+    cursor.execute("PRAGMA table_info(settings)")
+    cols = [c[1] for c in cursor.fetchall()]
+    defaults = {
+        "id": 1,
+        "wholesale_number": "",
+        "wholesale_name": "Wholesale Name Here",
+        "wholesale_address": "",
+        "backup_directory": "",
+        "retention_count": 10,
+    }
+    present_cols = [c for c in defaults.keys() if c in cols]
+    columns_sql = ",".join(present_cols)
+    placeholders = ",".join(["?"] * len(present_cols))
+    values = [defaults[c] for c in present_cols]
+    if present_cols:
+        cursor.execute(f"INSERT INTO settings ({columns_sql}) VALUES ({placeholders})", values)
+
+
 def run_migrations(cursor):
     current = _get_schema_version(cursor)
     target = CURRENT_SCHEMA_VERSION
-    if current == target:
-        logger.info("Database schema already at version %s", current)
-        return
     if current > target:
         raise RuntimeError(f"Database schema version {current} is newer than supported {target}. Upgrade application.")
     for version in sorted(MIGRATIONS.keys()):
@@ -181,6 +222,8 @@ def run_migrations(cursor):
             MIGRATIONS[version](cursor)
             _set_schema_version(cursor, version)
             logger.info("Schema upgraded to version %s", version)
+    # Always ensure baseline data after migrations (or when already up to date)
+    _ensure_settings_row(cursor)
 
 
 def get_current_schema_version(cursor) -> int:

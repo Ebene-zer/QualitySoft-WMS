@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PyQt6.QtWidgets import QWidget
 
-# Ensure test database is used for isolation
+# Ensure a test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 # Patch all view classes to QWidget before importing MainWindow

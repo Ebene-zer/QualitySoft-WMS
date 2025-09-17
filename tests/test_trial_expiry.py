@@ -16,7 +16,7 @@ os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 @pytest.fixture(autouse=True)
 def reset_license():
-    """Reset license row before each test."""
+    """Reset the license row before each test."""
     conn = get_db_connection()
     cur = conn.cursor()
     today_iso = datetime.now().strftime("%Y-%m-%d")

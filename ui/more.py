@@ -77,86 +77,97 @@ class SalesReportWidget(QWidget):
             self.show_btn.setVisible(True)
 
     def generate_sales_report(self):
+        """Generate sales report safely; avoid crashes if widget/label was deleted."""
         report_type = self.report_type_box.currentText()
         conn = get_db_connection()
-        cursor = conn.cursor()
-        today = datetime.date.today()
-        if report_type == "Daily":
-            iso_start = today.strftime("%Y-%m-%d")
-            iso_end = iso_start
-            # Try to match both DATE(invoice_date) and invoice_date LIKE 'YYYY-MM-DD%'
-            cursor.execute(
-                """
-                SELECT invoice_date, total_amount FROM invoices
-                WHERE DATE(invoice_date) = ? OR invoice_date LIKE ?
-            """,
-                (iso_start, f"{iso_start}%"),
-            )
-        elif report_type == "Weekly":
-            iso_start = (today - datetime.timedelta(days=today.weekday())).strftime("%Y-%m-%d")
-            iso_end = today.strftime("%Y-%m-%d")
-            cursor.execute(
-                """
-                SELECT invoice_date, total_amount FROM invoices
-                WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """,
-                (iso_start, iso_end, iso_start, iso_end),
-            )
-        elif report_type == "Monthly":
-            iso_start = today.replace(day=1).strftime("%Y-%m-%d")
-            iso_end = today.strftime("%Y-%m-%d")
-            cursor.execute(
-                """
-                SELECT invoice_date, total_amount FROM invoices
-                WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """,
-                (iso_start, iso_end, iso_start, iso_end),
-            )
-        elif report_type == "Annual":
-            iso_start = today.replace(month=1, day=1).strftime("%Y-%m-%d")
-            iso_end = today.strftime("%Y-%m-%d")
-            cursor.execute(
-                """
-                SELECT invoice_date, total_amount FROM invoices
-                WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-            """,
-                (iso_start, iso_end, iso_start, iso_end),
-            )
-        else:
-            self.result_label.setText("Invalid report type selected.")
-            return
-
-        rows = cursor.fetchall()
-
-        total_sales = sum(row[1] for row in rows)
-        # Convert ISO dates to Day/Month/Year for display and build HTML output
         try:
-            display_start = datetime.datetime.strptime(iso_start, "%Y-%m-%d").strftime("%d/%m/%Y")
-            display_end = datetime.datetime.strptime(iso_end, "%Y-%m-%d").strftime("%d/%m/%Y")
-        except Exception:
-            display_start = iso_start
-            display_end = iso_end
+            cursor = conn.cursor()
+            today = datetime.date.today()
+            if report_type == "Daily":
+                iso_start = today.strftime("%Y-%m-%d")
+                iso_end = iso_start
+                cursor.execute(
+                    """
+                    SELECT invoice_date, total_amount FROM invoices
+                    WHERE DATE(invoice_date) = ? OR invoice_date LIKE ?
+                """,
+                    (iso_start, f"{iso_start}%"),
+                )
+            elif report_type == "Weekly":
+                iso_start = (today - datetime.timedelta(days=today.weekday())).strftime("%Y-%m-%d")
+                iso_end = today.strftime("%Y-%m-%d")
+                cursor.execute(
+                    """
+                    SELECT invoice_date, total_amount FROM invoices
+                    WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
+                """,
+                    (iso_start, iso_end, iso_start, iso_end),
+                )
+            elif report_type == "Monthly":
+                iso_start = today.replace(day=1).strftime("%Y-%m-%d")
+                iso_end = today.strftime("%Y-%m-%d")
+                cursor.execute(
+                    """
+                    SELECT invoice_date, total_amount FROM invoices
+                    WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
+                """,
+                    (iso_start, iso_end, iso_start, iso_end),
+                )
+            elif report_type == "Annual":
+                iso_start = today.replace(month=1, day=1).strftime("%Y-%m-%d")
+                iso_end = today.strftime("%Y-%m-%d")
+                cursor.execute(
+                    """
+                    SELECT invoice_date, total_amount FROM invoices
+                    WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
+                """,
+                    (iso_start, iso_end, iso_start, iso_end),
+                )
+            else:
+                # Invalid type; just ignore if widget is already going away
+                return
 
-        if not rows:
-            report_html = (
-                f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>No sales found</span><br/>"
-                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
-                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
-                f"{display_start} to {display_end}</span>"
-            )
-        else:
-            report_html = (
-                f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>{report_type} Sales Report</span><br/>"
-                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
-                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
-                f"{display_start} to {display_end}</span><br/>"
-                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Total Sales:</span> "
-                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>GHS{total_sales:,.2f}</span><br/>"
-                f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Transactions:</span> "
-                f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>{len(rows)}</span>"
-            )
-        self.result_label.setText(report_html)
-        conn.close()
+            rows = cursor.fetchall()
+
+            total_sales = sum(row[1] for row in rows)
+            # Convert ISO dates to Day/Month/Year for display and build HTML output
+            try:
+                display_start = datetime.datetime.strptime(iso_start, "%Y-%m-%d").strftime("%d/%m/%Y")
+                display_end = datetime.datetime.strptime(iso_end, "%Y-%m-%d").strftime("%d/%m/%Y")
+            except Exception:
+                display_start = iso_start
+                display_end = iso_end
+
+            if not rows:
+                report_html = (
+                    f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>No sales found</span><br/>"
+                    f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
+                    f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
+                    f"{display_start} to {display_end}</span>"
+                )
+            else:
+                report_html = (
+                    f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>"
+                    f"{report_type} Sales Report</span><br/>"
+                    f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
+                    f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
+                    f"{display_start} to {display_end}</span><br/>"
+                    f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Total Sales:</span> "
+                    f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
+                    f"GHS{total_sales:,.2f}</span><br/>"
+                    f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Transactions:</span> "
+                    f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>{len(rows)}</span>"
+                )
+
+            # Safely update label; it might be deleted if the widget was torn down
+            try:
+                if hasattr(self, "result_label") and self.result_label is not None:
+                    self.result_label.setText(report_html)
+            except RuntimeError:
+                # Underlying C++ object deleted; ignore
+                pass
+        finally:
+            conn.close()
 
 
 # Embedded widget for graph

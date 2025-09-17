@@ -5,7 +5,7 @@ import pytest
 
 SKIP_GUI = os.environ.get("SKIP_GUI_TESTS") == "1"
 
-# Ensure test database is used for isolation
+# Ensure a test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
 
