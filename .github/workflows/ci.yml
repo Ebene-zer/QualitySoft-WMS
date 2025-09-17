@@ -53,7 +53,7 @@ jobs:
           coverage xml
 
       - name: Upload coverage to Codecov (optional)
-        if: success() && env.CODECOV_TOKEN != ''
+        if: ${{ success() && secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -80,7 +80,7 @@ jobs:
           name: dist
           path: dist/*
       - name: Publish to PyPI (requires PYPI_API_TOKEN secret)
-        if: secrets.PYPI_API_TOKEN != ''
+        if: ${{ secrets.PYPI_API_TOKEN != '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
