@@ -72,7 +72,15 @@ jobs:
             pip install -e .
           fi
 
-      - name: Clean build artifacts (avoid mypy duplicate modules)
+      # Cross-platform clean to avoid mypy duplicate modules
+      - name: Clean build artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
+
+      - name: Clean build artifacts (POSIX)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           rm -rf build/ dist/ || true
