@@ -72,6 +72,10 @@ jobs:
             pip install -e .
           fi
 
+      - name: Clean build artifacts (avoid mypy duplicate modules)
+        run: |
+          rm -rf build/ dist/
+
       - name: Lint (ruff)
         run: ruff check .
 

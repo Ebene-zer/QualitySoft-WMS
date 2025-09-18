@@ -152,9 +152,20 @@ def perform_backup(retention: int | None = None) -> str:
     db_path = _get_database_path()
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"Database file not found: {db_path}")
-    timestamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Use microseconds to avoid collisions when creating multiple backups in the same second
+    now = _dt.datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S_%f")
     backup_name = f"{BACKUP_FILENAME_PREFIX}{timestamp}.db"
     backup_path = os.path.join(backup_dir, backup_name)
+
+    # Fallback uniqueness guard: if path exists, add a numeric suffix
+    if os.path.exists(backup_path):
+        idx = 1
+        base, ext = os.path.splitext(backup_path)
+        while os.path.exists(f"{base}_{idx}{ext}"):
+            idx += 1
+        backup_path = f"{base}_{idx}{ext}"
 
     source = sqlite3.connect(db_path, timeout=10)
     try:
