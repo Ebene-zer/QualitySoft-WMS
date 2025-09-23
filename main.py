@@ -117,7 +117,7 @@ class InitialAdminSetupDialog(QDialog):
 
 
 def main() -> int:
-    """Application entry point used by console script 'wms'.
+    """Application entry point used by console script 'tradia'.
 
     Returns an exit status code.
     """
