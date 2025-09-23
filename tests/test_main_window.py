@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PyQt6.QtWidgets import QWidget
 
+from utils.branding import APP_NAME
+
 # Ensure a test database is used for isolation
 os.environ["WMS_DB_NAME"] = "test_wholesale.db"
 
@@ -24,7 +26,7 @@ pytestmark = [pytest.mark.usefixtures("qapp")]  # ensure QApplication from conft
 class TestMainWindow:
     def test_nav_buttons_and_switch_view(self):
         window = MainWindow("testuser", "Admin")
-        assert window.windowTitle() == "QualitySoft WMS"
+        assert window.windowTitle() == APP_NAME
         assert len(window.nav_buttons) == 7
         for i in range(5):
             window.switch_view(i)
