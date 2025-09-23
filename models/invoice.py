@@ -286,6 +286,21 @@ class Invoice:
             return ""
 
     @staticmethod
+    def get_receipt_texts():
+        """Return (thank_you, notes) from settings with safe defaults."""
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT receipt_thank_you, receipt_notes FROM settings WHERE id=1")
+            row = cur.fetchone()
+            conn.close()
+            thank = row[0] if row and row[0] else "Thank you for buying from us!"
+            notes = row[1] if row and row[1] else ""
+            return thank, notes
+        except Exception:
+            return "Thank you for buying from us!", ""
+
+    @staticmethod
     def format_receipt_data(invoice, wholesale_number=None, wholesale_address=None):
         if wholesale_number is None:
             wholesale_number = Invoice.get_wholesale_name()
@@ -379,8 +394,7 @@ class Invoice:
             f"{formatted_data.get('wholesale_address', '')}"
         )
         elements.append(Paragraph(contact_line, contact_address_style))
-        # Use inline styling so labels (descriptions) and data use distinct fonts/weights
-        # ReportLab's Paragraph supports <b> and <font> tags for simple inline styling.
+        # Details
         elements.append(
             Paragraph(
                 f"<b>Invoice Number:</b> <font name='Helvetica'>{formatted_data['invoice_number']}</font>",
@@ -399,13 +413,8 @@ class Invoice:
                 styles["Normal"],
             )
         )
-        elements.append(
-            Paragraph(
-                f"<b>Customer Number:</b> <font name='Helvetica'>{formatted_data['customer_number']}</font>",
-                styles["Normal"],
-            )
-        )
         elements.append(Spacer(1, 12))
+        # Items table
         table_data = [["Product", "Quantity", "Unit Price (GH¢)", "Subtotal (GH¢)"]] + formatted_data["items"]
         table_data.append(["", f"Total Items: {formatted_data['total_items']}", "", ""])
         table = Table(table_data, colWidths=[60 * mm, 30 * mm, 40 * mm, 40 * mm])
@@ -428,14 +437,47 @@ class Invoice:
         )
         elements.append(table)
         elements.append(Spacer(1, 16))
-        summary_style = ParagraphStyle(name="Summary", parent=styles["Normal"], leftIndent=400)
-        elements.append(Paragraph(f"Discount: GH¢ {formatted_data['discount']}", summary_style))
-        elements.append(Paragraph(f"Tax: GH¢ {formatted_data['tax']}", summary_style))
-        elements.append(Paragraph(f"Total: GH¢ {formatted_data['total']}", summary_style))
-        elements.append(Spacer(1, 30))
-        footer_style = ParagraphStyle(
-            name="Footer", parent=styles["Normal"], alignment=1, fontSize=11, textColor=colors.grey, spaceBefore=40
+
+        # Summary (right) and Notes (left) side by side
+        summary_right = ParagraphStyle(name="SummaryRight", parent=styles["Normal"], alignment=2)
+        notes_style = ParagraphStyle(name="NotesLeft", parent=styles["Normal"], fontSize=10, textColor=colors.grey)
+
+        discount = formatted_data["discount"]
+        tax = formatted_data["tax"]
+        total = formatted_data["total"]
+        summary_text = f"Discount: GH¢ {discount}<br/>" f"Tax: GH¢ {tax}<br/>" f"<b>Total: GH¢ {total}</b>"
+        thank_you, notes = Invoice.get_receipt_texts()
+        notes_para = Paragraph(notes or "", notes_style)
+        summary_para = Paragraph(summary_text, summary_right)
+
+        summary_notes_table = Table(
+            [[notes_para, summary_para]],
+            colWidths=[100 * mm, 70 * mm],
+            hAlign="LEFT",
         )
-        elements.append(Spacer(1, 60))
-        elements.append(Paragraph("Thank you for buying from us!", footer_style))
+        summary_notes_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (0, 0), 0),
+                    ("RIGHTPADDING", (-1, 0), (-1, 0), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+        elements.append(summary_notes_table)
+        elements.append(Spacer(1, 30))
+
+        # Footer thank-you centered
+        footer_style = ParagraphStyle(
+            name="Footer",
+            parent=styles["Normal"],
+            alignment=1,
+            fontSize=11,
+            textColor=colors.grey,
+            spaceBefore=20,
+        )
+        elements.append(Paragraph(thank_you, footer_style))
+
         doc.build(elements)
