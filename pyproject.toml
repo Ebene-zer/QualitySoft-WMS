@@ -1,5 +1,5 @@
 [project]
-name = "qualitysoft-wms"
+name = "tradia"
 version = "1.0.0"
 description = "Wholesale Management System (MVP)"
 authors = [ { name = "Ebenezer Fuachie", email = "fuachiee717@gmai.com" } ]
@@ -30,7 +30,7 @@ dependencies = [
 dev = ["ruff", "mypy", "pytest", "pytest-qt", "coverage"]
 
 [project.scripts]
-wms = "main:main"
+tradia = "main:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
