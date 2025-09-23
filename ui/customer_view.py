@@ -1,5 +1,8 @@
+from PyQt6.QtCore import QRegularExpression
+from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QHBoxLayout,
+    QHeaderView,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -10,6 +13,12 @@ from PyQt6.QtWidgets import (
 )
 
 from models.customer import Customer
+from ui.customer_history_dialog import CustomerHistoryDialog
+from utils.ui_common import (
+    SEARCH_PLACEHOLDER_CUSTOMERS,
+    SEARCH_TOOLTIP_CUSTOMERS,
+    create_top_actions_row,
+)
 
 
 class CustomerView(QWidget):
@@ -27,6 +36,8 @@ class CustomerView(QWidget):
         self.phone_input = QLineEdit()
         self.phone_input.setPlaceholderText("Phone Number")
         self.phone_input.setMaxLength(10)  # Limit to 10 digits
+        # Enforce digits-only and up to 10 digits (QIntValidator cannot represent all 10-digit ranges)
+        self.phone_input.setValidator(QRegularExpressionValidator(QRegularExpression(r"^\d{0,10}$"), self))
         self.layout.addWidget(self.phone_input)
 
         self.address_input = QLineEdit()
@@ -36,10 +47,16 @@ class CustomerView(QWidget):
         # Enter key support
         self.address_input.returnPressed.connect(self.add_customer)
 
-        # Add Customer Button
-        add_button = QPushButton("Add Customer")
-        add_button.clicked.connect(self.add_customer)
-        self.layout.addWidget(add_button)
+        # Add Customer Button and Search (same row)
+        top_actions, self.search_input, self.search_timer, add_button = create_top_actions_row(
+            self,
+            "Add Customer",
+            self.add_customer,
+            SEARCH_PLACEHOLDER_CUSTOMERS,
+            SEARCH_TOOLTIP_CUSTOMERS,
+            lambda: self.filter_customers(self.search_input.text()),
+        )
+        self.layout.addLayout(top_actions)
 
         # Customer Table
         self.customer_table = QTableWidget()
@@ -47,6 +64,8 @@ class CustomerView(QWidget):
         self.customer_table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Address"])
         self.customer_table.setSelectionBehavior(self.customer_table.SelectionBehavior.SelectRows)
         self.customer_table.setEditTriggers(self.customer_table.EditTrigger.NoEditTriggers)
+        # Set header resize behavior once to avoid repeated auto-resizes
+        self.customer_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.customer_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
         self.layout.addWidget(self.customer_table)
 
@@ -62,6 +81,11 @@ class CustomerView(QWidget):
         delete_button = QPushButton("Delete Selected")
         delete_button.clicked.connect(self.delete_customer)
         button_layout.addWidget(delete_button)
+
+        # View History Button
+        history_button = QPushButton("View History")
+        history_button.clicked.connect(self.view_history)
+        button_layout.addWidget(history_button)
 
         self.layout.addLayout(button_layout)
 
@@ -113,14 +137,44 @@ class CustomerView(QWidget):
 
     # Load added customers
     def load_customers(self):
-        self.customer_table.setRowCount(0)
+        tbl = self.customer_table
+        prev_sorting = tbl.isSortingEnabled()
+        # Reduce UI work during bulk load
+        tbl.setSortingEnabled(False)
+        tbl.setUpdatesEnabled(False)
+        tbl.blockSignals(True)
+
         customers = Customer.get_all_customers()
+        tbl.setRowCount(len(customers))
         for row_idx, customer in enumerate(customers):
-            self.customer_table.insertRow(row_idx)
-            self.customer_table.setItem(row_idx, 0, QTableWidgetItem(str(customer.customer_id)))
-            self.customer_table.setItem(row_idx, 1, QTableWidgetItem(customer.name))
-            self.customer_table.setItem(row_idx, 2, QTableWidgetItem(customer.phone_number))
-            self.customer_table.setItem(row_idx, 3, QTableWidgetItem(customer.address))
+            tbl.setItem(row_idx, 0, QTableWidgetItem(str(customer.customer_id)))
+            tbl.setItem(row_idx, 1, QTableWidgetItem(customer.name))
+            tbl.setItem(row_idx, 2, QTableWidgetItem(customer.phone_number))
+            tbl.setItem(row_idx, 3, QTableWidgetItem(customer.address))
+
+        # Restore UI updates and signals
+        tbl.blockSignals(False)
+        tbl.setUpdatesEnabled(True)
+        tbl.setSortingEnabled(prev_sorting)
+
+        # Re-apply current filter
+        self.filter_customers(self.search_input.text())
+
+    # Helpers for incremental updates
+    def _find_customer_row(self, customer_id: int) -> int:
+        for row in range(self.customer_table.rowCount()):
+            item = self.customer_table.item(row, 0)
+            if item and item.text() == str(customer_id):
+                return row
+        return -1
+
+    def _append_customer_row(self, customer_id: int, name: str, phone: str, address: str):
+        row_idx = self.customer_table.rowCount()
+        self.customer_table.setRowCount(row_idx + 1)
+        self.customer_table.setItem(row_idx, 0, QTableWidgetItem(str(customer_id)))
+        self.customer_table.setItem(row_idx, 1, QTableWidgetItem(name))
+        self.customer_table.setItem(row_idx, 2, QTableWidgetItem(phone))
+        self.customer_table.setItem(row_idx, 3, QTableWidgetItem(address))
 
     # Act upon a click on Add Customer Button
     def add_customer(self):
@@ -139,12 +193,19 @@ class CustomerView(QWidget):
             return
 
         try:
-            Customer.add_customer(name, phone_number, address)
-            QMessageBox.information(self, "Success", "Customer added.")
-            self.load_customers()
-            self.clear_inputs()
+            new_id = Customer.add_customer(name, phone_number, address)
+        except ValueError as e:
+            # Duplicate (name, phone) or validation errors from model
+            QMessageBox.warning(self, "Cannot Add Customer", str(e))
+            return
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to add customer:\n{e}")
+            return
+        QMessageBox.information(self, "Success", "Customer added.")
+        # Incremental UI update instead of full reload
+        self._append_customer_row(new_id, name, phone_number, address)
+        self.filter_customers(self.search_input.text())
+        self.clear_inputs()
 
     # Act upon a click on Update Customer button
     def update_customer(self):
@@ -169,11 +230,21 @@ class CustomerView(QWidget):
 
         try:
             Customer.update_customer(customer_id, name, phone_number, address)
-            QMessageBox.information(self, "Success", "Customer details updated.")
-            self.load_customers()
-            self.clear_inputs()
+        except ValueError as e:
+            # Duplicate (name, phone) or validation errors from model
+            QMessageBox.warning(self, "Cannot Update Customer", str(e))
+            return
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update customer:\n{e}")
+            return
+        QMessageBox.information(self, "Success", "Customer details updated.")
+        # Incremental UI update
+        row = self.customer_table.currentRow()
+        self.customer_table.setItem(row, 1, QTableWidgetItem(name))
+        self.customer_table.setItem(row, 2, QTableWidgetItem(phone_number))
+        self.customer_table.setItem(row, 3, QTableWidgetItem(address))
+        self.filter_customers(self.search_input.text())
+        self.clear_inputs()
 
     # Act upon a click on Delete Customer Button
     def delete_customer(self):
@@ -189,9 +260,21 @@ class CustomerView(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            Customer.delete_customer(customer_id)
+            try:
+                Customer.delete_customer(customer_id)
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Delete Failed",
+                    "Could not delete customer. They may have existing invoices linked to them.\n" + str(e),
+                )
+                return
             QMessageBox.information(self, "Deleted", "Customer deleted.")
-            self.load_customers()
+            # Incremental UI update
+            row = self.customer_table.currentRow()
+            if row != -1:
+                self.customer_table.removeRow(row)
+            self.clear_inputs()
 
     def get_selected_customer_id(self):
         selected = self.customer_table.currentRow()
@@ -204,7 +287,6 @@ class CustomerView(QWidget):
         self.name_input.clear()
         self.phone_input.clear()
         self.address_input.clear()
-        # no details label — keep inputs cleared
 
     def populate_fields_from_selection(self):
         selected = self.customer_table.currentRow()
@@ -215,3 +297,40 @@ class CustomerView(QWidget):
         self.phone_input.setText(self.customer_table.item(selected, 2).text())
         self.address_input.setText(self.customer_table.item(selected, 3).text())
         # previous implementation: no extra details label
+
+    def view_history(self):
+        """Show recent invoices for the selected customer using a dedicated dialog."""
+        customer_id = self.get_selected_customer_id()
+        if customer_id is None:
+            QMessageBox.information(self, "Purchase History", "Select a customer to view history.")
+            return
+        # Get name for dialog title
+        selected = self.customer_table.currentRow()
+        customer_name = self.customer_table.item(selected, 1).text() if selected != -1 else str(customer_id)
+        try:
+            dlg = CustomerHistoryDialog(self, customer_id, customer_name)
+            dlg.exec()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open purchase history:\n{e}")
+            return
+
+    def filter_customers(self, text: str):
+        """Filter customer table rows by text across all columns (case-insensitive)."""
+        text = (text or "").strip().lower()
+        for row in range(self.customer_table.rowCount()):
+            if not text:
+                self.customer_table.setRowHidden(row, False)
+                continue
+            match = False
+            for col in range(self.customer_table.columnCount()):
+                item = self.customer_table.item(row, col)
+                if item and text in item.text().lower():
+                    match = True
+                    break
+            self.customer_table.setRowHidden(row, not match)
+
+    def on_customer_search_text_changed(self, _text: str):
+        # Restart debounce timer
+        if self.search_timer.isActive():
+            self.search_timer.stop()
+        self.search_timer.start()
