@@ -1,8 +1,10 @@
 from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
+from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QComboBox,
     QCompleter,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -42,6 +44,9 @@ class InvoiceView(QWidget):
         self.customer_dropdown.setEditable(True)
         self.customer_completer = QCompleter()
         self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        # Set once; no need to reset on every reload
+        self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.customer_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.customer_dropdown.setCompleter(self.customer_completer)
         self.customer_dropdown.lineEdit().installEventFilter(focus_filter)
         self.customer_dropdown.currentIndexChanged.connect(self._select_all_customer)
@@ -53,6 +58,9 @@ class InvoiceView(QWidget):
         self.product_dropdown.setEditable(True)
         self.product_completer = QCompleter()
         self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        # Set once; no need to reset on every reload
+        self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.product_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.product_dropdown.setCompleter(self.product_completer)
         self.product_dropdown.lineEdit().installEventFilter(focus_filter)
         self.product_dropdown.currentIndexChanged.connect(self._select_all_product)
@@ -62,6 +70,8 @@ class InvoiceView(QWidget):
         # Quantity Input
         self.quantity_input = QLineEdit()
         self.quantity_input.setPlaceholderText("Quantity")
+        # Only positive integers for quantity
+        self.quantity_input.setValidator(QIntValidator(1, 1_000_000_000, self))
         self.layout.addWidget(self.quantity_input)
 
         # Enter key support
@@ -86,17 +96,26 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setHorizontalHeaderLabels(["Product", "Quantity", "Unit Price", "Total"])
         self.invoice_items_table.setSelectionBehavior(self.invoice_items_table.SelectionBehavior.SelectRows)
         self.invoice_items_table.setEditTriggers(self.invoice_items_table.EditTrigger.NoEditTriggers)
+        # Set header resize behavior once to avoid repeated auto-resizes
+        self.invoice_items_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.invoice_items_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
         self.layout.addWidget(self.invoice_items_table)
 
         # Discount and Tax Inputs
         self.discount_input = QLineEdit()
         self.discount_input.setPlaceholderText("Discount (GH¢)")
+        # Currency: non-negative with up to 2 decimals
+        discount_validator = QDoubleValidator(0.0, 1_000_000_000.0, 2, self)
+        discount_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        self.discount_input.setValidator(discount_validator)
         self.discount_input.textChanged.connect(self.handle_discount_input)
         self.layout.addWidget(self.discount_input)
 
         self.tax_input = QLineEdit()
         self.tax_input.setPlaceholderText("Tax (GH¢)")
+        tax_validator = QDoubleValidator(0.0, 1_000_000_000.0, 2, self)
+        tax_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        self.tax_input.setValidator(tax_validator)
         self.tax_input.textChanged.connect(self.handle_tax_input)
         self.layout.addWidget(self.tax_input)
 
@@ -161,35 +180,77 @@ class InvoiceView(QWidget):
         """
 
     def load_customers(self):
-        self.customer_dropdown.clear()
-        customers = Customer.get_all_customers()
-        # Show customer name and contact
-        names = [f"{c.name} - {c.phone_number}" for c in customers]
-        self.customer_dropdown.addItems(names)
-        self.customer_completer.setModel(self.customer_dropdown.model())
-        self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        self.customer_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        # Bulk refresh without extra signals/repains
+        dd = self.customer_dropdown
+        dd.blockSignals(True)
+        dd.setUpdatesEnabled(False)
+        try:
+            dd.clear()
+            customers = Customer.get_all_customers()
+            names = [f"{c.name} - {c.phone_number}" for c in customers]
+            if names:
+                dd.addItems(names)
+            # Keep completer bound to the same model; no need to reset filter/completion modes
+            self.customer_completer.setModel(dd.model())
+        finally:
+            dd.blockSignals(False)
+            dd.setUpdatesEnabled(True)
 
     def load_products(self):
-        self.product_dropdown.clear()
-        products = Product.get_all_products()
-        # Show as "ID - Name (GHS price)" for search by both
-        names = [f"{p.product_id} - {p.name} (GH¢ {p.price})" for p in products]
-        self.product_dropdown.addItems(names)
-        self.product_completer.setModel(self.product_dropdown.model())
-        self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        self.product_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        dd = self.product_dropdown
+        dd.blockSignals(True)
+        dd.setUpdatesEnabled(False)
+        try:
+            dd.clear()
+            products = Product.get_all_products()
+            names = [f"{p.product_id} - {p.name} (GH¢ {p.price})" for p in products]
+            if names:
+                dd.addItems(names)
+            self.product_completer.setModel(dd.model())
+        finally:
+            dd.blockSignals(False)
+            dd.setUpdatesEnabled(True)
 
     def load_invoice_items_table(self):
-        self.invoice_items_table.setRowCount(0)
+        tbl = self.invoice_items_table
+        prev_sorting = tbl.isSortingEnabled()
+        # Reduce UI work during bulk load
+        tbl.setSortingEnabled(False)
+        tbl.setUpdatesEnabled(False)
+        tbl.blockSignals(True)
+
+        tbl.setRowCount(len(self.items))
         for row_idx, item in enumerate(self.items):
-            self.invoice_items_table.insertRow(row_idx)
-            self.invoice_items_table.setItem(row_idx, 0, QTableWidgetItem(item["product_name"]))
-            self.invoice_items_table.setItem(row_idx, 1, QTableWidgetItem(str(item["quantity"])))
-            self.invoice_items_table.setItem(row_idx, 2, QTableWidgetItem(f"{item['unit_price']:.2f}"))
-            self.invoice_items_table.setItem(
-                row_idx, 3, QTableWidgetItem(f"{item['quantity'] * item['unit_price']:.2f}")
-            )
+            tbl.setItem(row_idx, 0, QTableWidgetItem(item["product_name"]))
+            tbl.setItem(row_idx, 1, QTableWidgetItem(str(item["quantity"])))
+            tbl.setItem(row_idx, 2, QTableWidgetItem(f"{item['unit_price']:.2f}"))
+            tbl.setItem(row_idx, 3, QTableWidgetItem(f"{item['quantity'] * item['unit_price']:.2f}"))
+
+        # Restore UI updates and signals
+        tbl.blockSignals(False)
+        tbl.setUpdatesEnabled(True)
+        tbl.setSortingEnabled(prev_sorting)
+
+    # Helpers for incremental updates (avoid full reloads)
+    def _find_row_by_product_name(self, product_name: str) -> int:
+        for row in range(self.invoice_items_table.rowCount()):
+            it = self.invoice_items_table.item(row, 0)
+            if it and it.text() == product_name:
+                return row
+        return -1
+
+    def _append_invoice_row(self, product_name: str, quantity: int, unit_price: float):
+        row = self.invoice_items_table.rowCount()
+        self.invoice_items_table.setRowCount(row + 1)
+        self.invoice_items_table.setItem(row, 0, QTableWidgetItem(product_name))
+        self.invoice_items_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
+        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(f"{unit_price:.2f}"))
+        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(f"{quantity * unit_price:.2f}"))
+
+    def _set_invoice_row(self, row: int, quantity: int, unit_price: float):
+        self.invoice_items_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
+        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(f"{unit_price:.2f}"))
+        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(f"{quantity * unit_price:.2f}"))
 
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
@@ -233,8 +294,18 @@ class InvoiceView(QWidget):
                     "product_name": product.name,  # Store product name for display
                 }
             )
+            # Incremental UI update: append a row
+            self._append_invoice_row(product.name, quantity, product.price)
+        else:
+            # Incremental UI update: update existing row for this product
+            row = self._find_row_by_product_name(product.name)
+            if row != -1:
+                new_qty = existing_qty + quantity
+                self._set_invoice_row(row, new_qty, product.price)
+            else:
+                # Fallback if not found
+                self.load_invoice_items_table()
 
-        self.load_invoice_items_table()
         self.update_total()
         self.quantity_input.clear()
 
@@ -278,7 +349,8 @@ class InvoiceView(QWidget):
             return
 
         target["quantity"] = quantity
-        self.load_invoice_items_table()
+        # Incremental UI update: set values in the selected row
+        self._set_invoice_row(selected, quantity, target["unit_price"])
         self.update_total()
         self.quantity_input.clear()
 
@@ -289,7 +361,8 @@ class InvoiceView(QWidget):
             return
         product_name = self.invoice_items_table.item(selected, 0).text()
         self.items = [item for item in self.items if item["product_name"] != product_name]
-        self.load_invoice_items_table()
+        # Incremental UI update: remove the selected row
+        self.invoice_items_table.removeRow(selected)
         self.update_total()
         self.quantity_input.clear()
 
