@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 
 from models.user import User
 from ui.main_window import MainWindow
+from utils.branding import APP_NAME
 from utils.session import set_current_user
 
 
@@ -97,7 +98,7 @@ class LoginWindow(QWidget):
 
         layout = QVBoxLayout()
 
-        title = QLabel("Welcome to QualitySoft WMS")
+        title = QLabel(f"Welcome to {APP_NAME}")
         title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
