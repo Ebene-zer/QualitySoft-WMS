@@ -11,9 +11,41 @@ class Product:
         self.price = price
         self.stock_quantity = stock_quantity
 
+    @staticmethod
+    def _name_exists(name: str, exclude_id: int | None = None) -> bool:
+        """Return True if a product with the same name exists (case-insensitive).
+        Optionally exclude a given product_id.
+        """
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        if exclude_id is None:
+            cursor.execute(
+                """
+                SELECT 1 FROM products
+                WHERE name = ? COLLATE NOCASE
+                LIMIT 1
+            """,
+                (name,),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT 1 FROM products
+                WHERE name = ? COLLATE NOCASE AND product_id != ?
+                LIMIT 1
+            """,
+                (name, exclude_id),
+            )
+        row = cursor.fetchone()
+        connection.close()
+        return row is not None
+
     # Add products method/function
     @staticmethod
     def add_product(name, price, stock_quantity):
+        # Prevent duplicate names (case-insensitive)
+        if Product._name_exists(name):
+            raise ValueError("Product already exists.\n" "You may want to update the existing product instead.")
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute(
@@ -23,12 +55,14 @@ class Product:
         """,
             (name, price, stock_quantity),
         )
+        new_id = cursor.lastrowid
         connection.commit()
         connection.close()
         try:
             log_action(get_current_username(), "PRODUCT_ADD", f"{name} qty={stock_quantity} price={price}")
         except Exception:
             pass
+        return new_id
 
     # Update products details method
     @staticmethod
