@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 7
 
 
 def _migration_1(cursor):
@@ -142,7 +142,110 @@ def _migration_4(cursor):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(username)")
 
 
-MIGRATIONS = {1: _migration_1, 2: _migration_2, 3: _migration_3, 4: _migration_4}
+def _migration_5(cursor):
+    logger.info("Applying migration 5: add unique indexes on products.name and customers(name, phone_number)")
+    # Deduplicate products by name (case-insensitive) by suffixing duplicates with their id
+    try:
+        cursor.execute(
+            """
+            SELECT LOWER(name) AS lname, GROUP_CONCAT(product_id) AS ids, COUNT(*)
+            FROM products
+            GROUP BY lname
+            HAVING COUNT(*) > 1
+            """
+        )
+        rows = cursor.fetchall()
+        for _, ids_csv, _ in rows:
+            ids = [int(x) for x in ids_csv.split(",") if x]
+            # Keep the first id; suffix the rest
+            for pid in ids[1:]:
+                cursor.execute(
+                    "UPDATE products SET name = name || ' (' || ? || ')' WHERE product_id = ?",
+                    (pid, pid),
+                )
+    except Exception as e:
+        logger.warning("Skipping product deduplication due to error: %s", e)
+
+    # Deduplicate customers by (name, phone_number) case-insensitive on name
+    try:
+        cursor.execute(
+            """
+            SELECT LOWER(name) AS lname, phone_number, GROUP_CONCAT(customer_id) AS ids, COUNT(*)
+            FROM customers
+            GROUP BY lname, phone_number
+            HAVING COUNT(*) > 1
+            """
+        )
+        rows = cursor.fetchall()
+        for _, _phone, ids_csv, _ in rows:
+            ids = [int(x) for x in ids_csv.split(",") if x]
+            for cid in ids[1:]:
+                cursor.execute(
+                    "UPDATE customers SET name = name || ' (' || ? || ')' WHERE customer_id = ?",
+                    (cid, cid),
+                )
+    except Exception as e:
+        logger.warning("Skipping customer deduplication due to error: %s", e)
+
+    # Create unique indexes (case-insensitive for name)
+    try:
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_name_unique ON products(name COLLATE NOCASE)")
+    except Exception as e:
+        logger.warning("Could not create unique index on products.name: %s", e)
+    try:
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_name_phone_unique "
+            "ON customers(name COLLATE NOCASE, phone_number)"
+        )
+    except Exception as e:
+        logger.warning("Could not create unique index on customers(name, phone_number): %s", e)
+
+
+def _migration_6(cursor):
+    logger.info("Applying migration 6: add receipt_thank_you and receipt_notes to settings")
+    cursor.execute("PRAGMA table_info(settings)")
+    cols = [c[1] for c in cursor.fetchall()]
+    if "receipt_thank_you" not in cols:
+        cursor.execute("ALTER TABLE settings ADD COLUMN receipt_thank_you TEXT")
+        # seed default for id=1 if row exists
+        try:
+            cursor.execute(
+                "UPDATE settings SET receipt_thank_you="
+                "COALESCE(receipt_thank_you, 'Thank you for buying from us!') "
+                "WHERE id=1"
+            )
+        except Exception:
+            pass
+    if "receipt_notes" not in cols:
+        cursor.execute("ALTER TABLE settings ADD COLUMN receipt_notes TEXT")
+        try:
+            cursor.execute("UPDATE settings SET receipt_notes=COALESCE(receipt_notes, '') WHERE id=1")
+        except Exception:
+            pass
+
+
+def _migration_7(cursor):
+    logger.info("Applying migration 7: add low_stock_threshold to settings")
+    cursor.execute("PRAGMA table_info(settings)")
+    cols = [c[1] for c in cursor.fetchall()]
+    if "low_stock_threshold" not in cols:
+        cursor.execute("ALTER TABLE settings ADD COLUMN low_stock_threshold INTEGER")
+        # seed default for id=1 if row exists
+        try:
+            cursor.execute("UPDATE settings SET low_stock_threshold=COALESCE(low_stock_threshold, 10) WHERE id=1")
+        except Exception:
+            pass
+
+
+MIGRATIONS = {
+    1: _migration_1,
+    2: _migration_2,
+    3: _migration_3,
+    4: _migration_4,
+    5: _migration_5,
+    6: _migration_6,
+    7: _migration_7,
+}
 
 # --- schema_version helpers --- #
 
@@ -189,6 +292,16 @@ def _ensure_settings_row(cursor):
                 cursor.execute("UPDATE settings SET backup_directory=COALESCE(backup_directory, '') WHERE id=1")
             if "retention_count" in cols:
                 cursor.execute("UPDATE settings SET retention_count=COALESCE(retention_count, 10) WHERE id=1")
+            if "receipt_thank_you" in cols:
+                cursor.execute(
+                    "UPDATE settings SET receipt_thank_you="
+                    "COALESCE(receipt_thank_you, 'Thank you for buying from us!') "
+                    "WHERE id=1"
+                )
+            if "receipt_notes" in cols:
+                cursor.execute("UPDATE settings SET receipt_notes=COALESCE(receipt_notes, '') WHERE id=1")
+            if "low_stock_threshold" in cols:
+                cursor.execute("UPDATE settings SET low_stock_threshold=COALESCE(low_stock_threshold, 10) WHERE id=1")
             return
     except Exception:
         # If SELECT failed due to schema oddities, just return
@@ -203,6 +316,9 @@ def _ensure_settings_row(cursor):
         "wholesale_address": "",
         "backup_directory": "",
         "retention_count": 10,
+        "receipt_thank_you": "Thank you for buying from us!",
+        "receipt_notes": "",
+        "low_stock_threshold": 10,
     }
     present_cols = [c for c in defaults.keys() if c in cols]
     columns_sql = ",".join(present_cols)

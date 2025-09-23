@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QPushButton,
     QTableWidget,
@@ -261,6 +262,8 @@ class ActivityLogWidget(QWidget):
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Timestamp", "User", "Action", "Details"])
         self.table.setEditTriggers(self.table.EditTrigger.NoEditTriggers)
+        # Resize columns to fill once to avoid repeated auto-resizes
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         btn_row = QHBoxLayout()
         self.refresh_btn = QPushButton("Refresh")
         self.refresh_btn.clicked.connect(self.load_logs)
@@ -272,13 +275,20 @@ class ActivityLogWidget(QWidget):
 
     def load_logs(self):
         rows = fetch_recent(200)
-        self.table.setRowCount(0)
+        tbl = self.table
+        prev_sorting = tbl.isSortingEnabled()
+        tbl.setSortingEnabled(False)
+        tbl.setUpdatesEnabled(False)
+        tbl.blockSignals(True)
+        tbl.setRowCount(len(rows))
         for r_idx, row in enumerate(rows):
-            self.table.insertRow(r_idx)
             for c_idx, val in enumerate(row):
                 item = QTableWidgetItem(str(val))
                 item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-                self.table.setItem(r_idx, c_idx, item)
+                tbl.setItem(r_idx, c_idx, item)
+        tbl.blockSignals(False)
+        tbl.setUpdatesEnabled(True)
+        tbl.setSortingEnabled(prev_sorting)
 
 
 class MoreDropdown(QWidget):

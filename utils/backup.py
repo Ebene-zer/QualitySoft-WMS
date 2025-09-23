@@ -1,4 +1,4 @@
-"""Backup utilities for the QualitySoft WMS application.
+"""Backup utilities for the Tradia application.
 
 Features:
 - Determine and create backup directory (configurable in settings.backup_directory)
@@ -15,10 +15,12 @@ import os
 import sqlite3
 
 from database.db_handler import get_db_connection
+from utils.branding import APP_SLUG
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_RELATIVE_BACKUP_PATH = os.path.join("Documents", "QualitySoftWMS", "backups")
+# Use filesystem-friendly slug for default location, e.g., ~/Documents/tradia/backups
+DEFAULT_RELATIVE_BACKUP_PATH = os.path.join("Documents", APP_SLUG, "backups")
 BACKUP_FILENAME_PREFIX = "backup_"  # backup_YYYYmmdd_HHMMSS.db
 DEFAULT_RETENTION_FALLBACK = 10
 

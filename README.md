@@ -1,12 +1,11 @@
-# QualitySoft WMS
+# Tradia
 
 Version: 1.0.0
 
 An easy-to-use Wholesale Management System (WMS) for Windows desktops. Manage products, customers, invoices, receipts, users, and safe local backups. Designed for small / medium wholesale businesses that need an offline, self‑contained solution.
 
-## Brand & Author
-- Product: QualitySoft WMS
-- Brand: QualitySoft
+## Author
+- Product: Tradia
 - Developer: Ebenezer Fuachie
 - Year: 2025
 - Email: fuachiee717@gmail.com
@@ -35,10 +34,10 @@ An easy-to-use Wholesale Management System (WMS) for Windows desktops. Manage pr
 
 ---
 ## Installation (End Users – Executable Distribution)
-1. Receive the installer or portable ZIP from QualitySoft.
+1. Receive the installer or portable ZIP from the developer or official source.
 2. If installer: Run it and follow prompts.
-3. If ZIP: Extract to a writable folder (e.g. `C:\QualitySoftWMS`).
-4. Launch `QualitySoftWMS.exe`.
+3. If ZIP: Extract to a writable folder (e.g. `C:\tradia`).
+4. Launch `tradia.exe`.
 5. First launch will display a temporary Admin password – copy it somewhere safe (one‑time view).
 6. Log in as Admin → you will be forced to set a new secure password.
 7. Start entering Products & Customers, then create Invoices.
@@ -61,7 +60,7 @@ An easy-to-use Wholesale Management System (WMS) for Windows desktops. Manage pr
 | Manual | Settings → Backup Now |
 | Automatic | On app exit if > 24h since last backup |
 
-- Default location (if none set): `Documents/QualitySoftWMS/backups`
+- Default location (if none set): `Documents/tradia/backups`
 - Filenames: `backup_YYYYmmdd_HHMMSS.db`
 - Retention: Only the most recent N backups (configurable) are kept. Lowering the retention value prunes older backups the next time a new backup is created.
 - To restore: Close app → (Optional but recommended: make a copy of the current `wholesale.db`) → Replace `wholesale.db` with chosen backup copy → Reopen.
@@ -112,7 +111,7 @@ An easy-to-use Wholesale Management System (WMS) for Windows desktops. Manage pr
 | Login role mismatch | Ensure correct role is selected in the dropdown before authenticating. |
 | Missing recent data | Restore from latest backup (close app first). |
 
-Support: Email or call the contacts in Brand & Author section.
+Support: Email or call the contacts in Author section.
 
 ---
 ## Privacy
@@ -126,7 +125,7 @@ Support: Email or call the contacts in Brand & Author section.
 ### Environment Setup
 ```
 python -m venv .venv
-.venv\\Scripts\\activate
+.venv\Scripts\activate
 pip install -e .[dev]
 ```
 
@@ -136,7 +135,7 @@ python -m main
 ```
 Or (after install):
 ```
-wms
+tradia
 ```
 
 ### Tests & Quality
@@ -154,7 +153,7 @@ mypy .
 
 ### Packaging (PyInstaller example)
 ```
-pyinstaller --noconfirm --noconsole --name QualitySoftWMS \
+pyinstaller --noconfirm --noconsole --name tradia \
   --add-data "icons;icons" main.py
 ```
 Add code signing for production distribution (optional but recommended).
@@ -237,4 +236,4 @@ Provided “as‑is” without warranty. Assess legal/regulatory suitability bef
 - PyQt6, SQLite, pandas, reportlab, fpdf, matplotlib contributors.
 
 ---
-© 2025 QualitySoft / Ebenezer Fuachie
+© 2025 Ebenezer Fuachie

@@ -87,6 +87,7 @@ class UserView(QWidget):
 
         # User List
         self.user_list = QListWidget()
+        self.user_list.setUniformItemSizes(True)
         self.user_list.itemClicked.connect(self.populate_user_fields)
         self.layout.addWidget(self.user_list)
 
@@ -105,15 +106,21 @@ class UserView(QWidget):
 
     # Load all current Users
     def load_users(self):
-        self.user_list.clear()
+        lst = self.user_list
+        lst.setUpdatesEnabled(False)
+        lst.blockSignals(True)
+        lst.clear()
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("SELECT username, role FROM users ORDER BY username")
         users = cursor.fetchall()
         connection.close()
 
-        for user in users:
-            self.user_list.addItem(f"{user[0]} ({user[1]})")
+        items = [f"{u[0]} ({u[1]})" for u in users]
+        lst.addItems(items)
+
+        lst.blockSignals(False)
+        lst.setUpdatesEnabled(True)
 
     # Act Upon Click on Add User
     def add_user(self):

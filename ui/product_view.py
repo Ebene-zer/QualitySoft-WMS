@@ -1,5 +1,7 @@
+from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QHBoxLayout,
+    QHeaderView,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -10,12 +12,20 @@ from PyQt6.QtWidgets import (
 )
 
 from models.product import Product
+from utils.app_settings import get_low_stock_threshold
+from utils.session import get_low_stock_alert_shown, set_low_stock_alert_shown
+from utils.ui_common import (
+    SEARCH_PLACEHOLDER_PRODUCTS,
+    SEARCH_TOOLTIP_PRODUCTS,
+    create_top_actions_row,
+)
 
 
 # Product View Class
 class ProductView(QWidget):
-    def __init__(self):
+    def __init__(self, on_low_stock_status_changed=None):
         super().__init__()
+        self._on_low_stock_status_changed = on_low_stock_status_changed
         # Tab style
         self.setStyleSheet(self.get_stylesheet())
 
@@ -28,19 +38,32 @@ class ProductView(QWidget):
 
         self.price_input = QLineEdit()
         self.price_input.setPlaceholderText("Price")
+        # Allow only positive currency values with up to 2 decimals
+        price_validator = QDoubleValidator(0.0, 1_000_000_000.0, 2, self)
+        price_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+        self.price_input.setValidator(price_validator)
         self.layout.addWidget(self.price_input)
 
         self.stock_input = QLineEdit()
         self.stock_input.setPlaceholderText("Stock Quantity")
+        # Allow only non-negative integers
+        self.stock_input.setValidator(QIntValidator(0, 1_000_000_000, self))
         self.layout.addWidget(self.stock_input)
 
         # Enter key support
         self.stock_input.returnPressed.connect(self.add_product)
 
-        # Add Product Button
-        add_button = QPushButton("Add Product")
-        add_button.clicked.connect(self.add_product)
-        self.layout.addWidget(add_button)
+        # Add Product Button and Search (same row)
+        # Reuse shared helper to build the top actions row with debounced search
+        top_actions, self.search_input, self.search_timer, add_button = create_top_actions_row(
+            self,
+            "Add Product",
+            self.add_product,
+            SEARCH_PLACEHOLDER_PRODUCTS,
+            SEARCH_TOOLTIP_PRODUCTS,
+            lambda: self.filter_products(self.search_input.text()),
+        )
+        self.layout.addLayout(top_actions)
 
         # Product Table (replaces product_list)
         self.product_table = QTableWidget()
@@ -48,6 +71,8 @@ class ProductView(QWidget):
         self.product_table.setHorizontalHeaderLabels(["ID", "Name", "Price", "Stock"])
         self.product_table.setSelectionBehavior(self.product_table.SelectionBehavior.SelectRows)
         self.product_table.setEditTriggers(self.product_table.EditTrigger.NoEditTriggers)
+        # Set header resize behavior once to avoid repeated auto-resizes
+        self.product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.product_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
         self.layout.addWidget(self.product_table)
 
@@ -68,7 +93,8 @@ class ProductView(QWidget):
         self.setLayout(self.layout)
 
         self.load_products()
-        self.show_low_stock_alert()
+        # Initialize badge once per session on first load (no popup)
+        self.update_low_stock_badge()
 
     # Product View Style
     def get_stylesheet(self):
@@ -115,14 +141,46 @@ class ProductView(QWidget):
 
     # Load Products Method
     def load_products(self):
-        self.product_table.setRowCount(0)
+        tbl = self.product_table
+        prev_sorting = tbl.isSortingEnabled()
+        # Reduce UI work during bulk load
+        tbl.setSortingEnabled(False)
+        tbl.setUpdatesEnabled(False)
+        tbl.blockSignals(True)
+
         products = Product.get_all_products()
+        tbl.setRowCount(len(products))
         for row_idx, product in enumerate(products):
-            self.product_table.insertRow(row_idx)
-            self.product_table.setItem(row_idx, 0, QTableWidgetItem(str(product.product_id)))
-            self.product_table.setItem(row_idx, 1, QTableWidgetItem(product.name))
-            self.product_table.setItem(row_idx, 2, QTableWidgetItem(str(product.price)))
-            self.product_table.setItem(row_idx, 3, QTableWidgetItem(str(product.stock_quantity)))
+            tbl.setItem(row_idx, 0, QTableWidgetItem(str(product.product_id)))
+            tbl.setItem(row_idx, 1, QTableWidgetItem(product.name))
+            tbl.setItem(row_idx, 2, QTableWidgetItem(str(product.price)))
+            tbl.setItem(row_idx, 3, QTableWidgetItem(str(product.stock_quantity)))
+
+        # Restore UI updates and signals
+        tbl.blockSignals(False)
+        tbl.setUpdatesEnabled(True)
+        tbl.setSortingEnabled(prev_sorting)
+
+        # Re-apply current filter (if any)
+        self.filter_products(self.search_input.text())
+        # Update badge after reload
+        self.update_low_stock_badge()
+
+    # Helpers for incremental updates
+    def _find_product_row(self, product_id: int) -> int:
+        for row in range(self.product_table.rowCount()):
+            item = self.product_table.item(row, 0)
+            if item and item.text() == str(product_id):
+                return row
+        return -1
+
+    def _append_product_row(self, product_id: int, name: str, price: float, stock: int):
+        row_idx = self.product_table.rowCount()
+        self.product_table.setRowCount(row_idx + 1)
+        self.product_table.setItem(row_idx, 0, QTableWidgetItem(str(product_id)))
+        self.product_table.setItem(row_idx, 1, QTableWidgetItem(name))
+        self.product_table.setItem(row_idx, 2, QTableWidgetItem(str(price)))
+        self.product_table.setItem(row_idx, 3, QTableWidgetItem(str(stock)))
 
     # Act upon a click on Add Product Button
     def add_product(self):
@@ -139,11 +197,21 @@ class ProductView(QWidget):
             return
 
         # Call add_product method from the Product Class and pass the entered values
-        Product.add_product(name, price, stock)
+        try:
+            new_id = Product.add_product(name, price, stock)
+        except ValueError as e:
+            QMessageBox.warning(self, "Cannot Add Product", str(e))
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to add product:\n{e}")
+            return
         QMessageBox.information(self, "Success", "Product added.")
+        # Incremental UI update
+        self._append_product_row(new_id, name, price, stock)
+        self.filter_products(self.search_input.text())
         self.clear_inputs()
-        self.load_products()
-        self.show_low_stock_alert()
+        # Refresh badge instead of showing a popup
+        self.update_low_stock_badge()
 
     # Act upon a click on Update Product
     def update_product(self):
@@ -159,10 +227,23 @@ class ProductView(QWidget):
         except ValueError:
             QMessageBox.warning(self, "Input Error", "Enter valid price and stock quantity.")
             return
-        Product.update_product(product_id, name, price, stock)
+        try:
+            Product.update_product(product_id, name, price, stock)
+        except ValueError as e:
+            QMessageBox.warning(self, "Cannot Update Product", str(e))
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to update product:\n{e}")
+            return
         QMessageBox.information(self, "Success", "Product updated.")
+        # Incremental UI update
+        self.product_table.setItem(selected, 1, QTableWidgetItem(name))
+        self.product_table.setItem(selected, 2, QTableWidgetItem(str(price)))
+        self.product_table.setItem(selected, 3, QTableWidgetItem(str(stock)))
+        self.filter_products(self.search_input.text())
         self.clear_inputs()
-        self.load_products()
+        # Refresh badge (no popup)
+        self.update_low_stock_badge()
 
     # Act upon a click on Delete product
     def delete_product(self):
@@ -178,10 +259,23 @@ class ProductView(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            Product.delete_product(product_id)
+            try:
+                Product.delete_product(product_id)
+            except Exception as e:
+                # Likely foreign key constraint (product referenced in invoices)
+                QMessageBox.critical(
+                    self,
+                    "Delete Failed",
+                    f"Could not delete product. It may be referenced by existing invoices.\n{e}",
+                )
+                return
             QMessageBox.information(self, "Success", "Product deleted.")
+            # Incremental UI update
+            self.product_table.removeRow(selected)
             self.clear_inputs()
-            self.load_products()
+            self.filter_products(self.search_input.text())
+            # Refresh badge (no popup)
+            self.update_low_stock_badge()
 
     # Clear Input Fields
     def clear_inputs(self):
@@ -198,10 +292,39 @@ class ProductView(QWidget):
         self.price_input.setText(self.product_table.item(selected, 2).text())
         self.stock_input.setText(self.product_table.item(selected, 3).text())
 
-    def show_low_stock_alert(self):
-        low_stock_products = Product.get_products_below_stock(10)
-        if low_stock_products:
-            product_names = ", ".join([f"{p.name} (Stock: {p.stock_quantity})" for p in low_stock_products])
-            QMessageBox.warning(
-                self, "Low Stock Alert", f"The following products have low stock quantity:\n{product_names}"
-            )
+    def update_low_stock_badge(self):
+        """Compute low-stock count and notify parent via callback. Shows once per session initially."""
+        try:
+            threshold = get_low_stock_threshold()
+            low_stock_products = Product.get_products_below_stock(threshold)
+            count = len(low_stock_products)
+            if callable(self._on_low_stock_status_changed):
+                self._on_low_stock_status_changed(count)
+            # Mark that we have handled the initial alert once per session
+            if not get_low_stock_alert_shown():
+                set_low_stock_alert_shown(True)
+        except Exception:
+            # Ignore errors to avoid blocking UI
+            pass
+
+    def filter_products(self, text: str):
+        """Filter table rows by search text across all columns (case-insensitive)."""
+        text = (text or "").strip().lower()
+        for row in range(self.product_table.rowCount()):
+            if not text:
+                self.product_table.setRowHidden(row, False)
+                continue
+            # Check all visible columns
+            match = False
+            for col in range(self.product_table.columnCount()):
+                item = self.product_table.item(row, col)
+                if item and text in item.text().lower():
+                    match = True
+                    break
+            self.product_table.setRowHidden(row, not match)
+
+    def on_product_search_text_changed(self, _text: str):
+        # Restart debounce timer
+        if self.search_timer.isActive():
+            self.search_timer.stop()
+        self.search_timer.start()

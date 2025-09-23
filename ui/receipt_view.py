@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QCompleter,
     QFileDialog,
+    QHeaderView,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -43,6 +44,9 @@ class ReceiptView(QWidget):
         self.invoice_dropdown.setEditable(True)
         self.invoice_completer = QCompleter()
         self.invoice_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        # Set once to avoid resetting on every reload
+        self.invoice_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.invoice_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.invoice_dropdown.setCompleter(self.invoice_completer)
         self.invoice_dropdown.lineEdit().installEventFilter(focus_filter)
         self.invoice_dropdown.lineEdit().returnPressed.connect(self.show_receipt)
@@ -57,14 +61,16 @@ class ReceiptView(QWidget):
         self.receipt_table.setColumnCount(4)
         self.receipt_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Total"])
         self.layout.addWidget(self.receipt_table)
-
-        self.export_pdf_button = QPushButton("Export to PDF")
-        self.export_pdf_button.clicked.connect(self.export_to_pdf)
-        self.layout.addWidget(self.export_pdf_button)
+        # Set header resize behavior once
+        self.receipt_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         self.print_button = QPushButton("Print Receipt")
         self.print_button.clicked.connect(self.print_receipt)
         self.layout.addWidget(self.print_button)
+
+        self.export_pdf_button = QPushButton("Export to PDF")
+        self.export_pdf_button.clicked.connect(self.export_to_pdf)
+        self.layout.addWidget(self.export_pdf_button)
 
         self.setLayout(self.layout)
         self.load_invoices()
@@ -111,13 +117,22 @@ class ReceiptView(QWidget):
         """
 
     def load_invoices(self):
-        self.invoice_dropdown.clear()
-        invoices = Invoice.get_all_invoices()
-        # Show newly created invoices at the top
-        invoices = sorted(invoices, key=lambda inv: getattr(inv, "invoice_id", 0), reverse=True)
-        invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GH¢ {inv.total_amount:,.2f}" for inv in invoices]
-        self.invoice_dropdown.addItems(invoice_strs)
-        self.invoice_completer.setModel(self.invoice_dropdown.model())
+        dd = self.invoice_dropdown
+        dd.blockSignals(True)
+        dd.setUpdatesEnabled(False)
+        try:
+            dd.clear()
+            invoices = Invoice.get_all_invoices()
+            # Show newly created invoices at the top
+            invoices = sorted(invoices, key=lambda inv: getattr(inv, "invoice_id", 0), reverse=True)
+            invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GH¢ {inv.total_amount:,.2f}" for inv in invoices]
+            if invoice_strs:
+                dd.addItems(invoice_strs)
+            # Keep completer bound to dropdown model
+            self.invoice_completer.setModel(dd.model())
+        finally:
+            dd.blockSignals(False)
+            dd.setUpdatesEnabled(True)
 
     def get_wholesale_number(self):
         conn = get_db_connection()
@@ -161,21 +176,27 @@ class ReceiptView(QWidget):
         self.details_label.setTextFormat(Qt.TextFormat.RichText)
         self.layout.insertWidget(3, self.details_label)
 
-        for item in formatted["items"]:
-            row = self.receipt_table.rowCount()
-            self.receipt_table.insertRow(row)
-            item_product = QTableWidgetItem(item[0])
-            item_product.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-            self.receipt_table.setItem(row, 0, item_product)
-            item_qty = QTableWidgetItem(item[1])
-            item_qty.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-            self.receipt_table.setItem(row, 1, item_qty)
-            item_price = QTableWidgetItem(f"GH¢ {item[2]}")
-            item_price.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-            self.receipt_table.setItem(row, 2, item_price)
-            item_total = QTableWidgetItem(f"GH¢ {item[3]}")
-            item_total.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-            self.receipt_table.setItem(row, 3, item_total)
+        # Efficiently populate table
+        tbl = self.receipt_table
+        tbl.setUpdatesEnabled(False)
+        tbl.blockSignals(True)
+        items = formatted["items"]
+        tbl.setRowCount(len(items))
+        for row, item in enumerate(items):
+            prod = QTableWidgetItem(item[0])
+            prod.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            tbl.setItem(row, 0, prod)
+            qty = QTableWidgetItem(item[1])
+            qty.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            tbl.setItem(row, 1, qty)
+            price = QTableWidgetItem(f"GH¢ {item[2]}")
+            price.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            tbl.setItem(row, 2, price)
+            total = QTableWidgetItem(f"GH¢ {item[3]}")
+            total.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            tbl.setItem(row, 3, total)
+        tbl.blockSignals(False)
+        tbl.setUpdatesEnabled(True)
 
     def export_to_pdf(self):
         if self.invoice_dropdown.currentIndex() == -1:
