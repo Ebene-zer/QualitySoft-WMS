@@ -13,7 +13,7 @@ from utils.backup import (
 )
 
 
-def test_schema_version_upgraded(db):  # db fixture autouse sets up isolated DB
+def test_schema_version_upgraded(db):  # db fixture auto use sets up isolated DB
     initialize_database()
     assert get_schema_version() >= 3
 
@@ -24,7 +24,7 @@ def test_backup_creation_and_retention(db):
     # Create 4 backups
     created = [perform_backup() for _ in range(4)]
     backups = list_backups()
-    assert len(backups) == 3  # only last 3 kept
+    assert len(backups) == 3  # only the last 3 kept
     # Last created backup must be present
     assert any(created[-1] == b for b in backups)
 
@@ -38,7 +38,7 @@ def test_backup_directory_override(db):
 
 def test_last_backup_time_updates(db):
     # Ensure no backups initially
-    # (Fresh DB, default directory may contain old backups if path reused; use temp dir override)
+    # (Fresh DB, default directory may contain old backups if a path reused; use temp dir override)
     with tempfile.TemporaryDirectory() as tempdir:
         update_backup_directory(tempdir)
         assert get_last_backup_time(tempdir) is None
@@ -59,7 +59,7 @@ def test_needs_backup_logic(db):
 
 
 def test_perform_backup_missing_db(monkeypatch, db):
-    # Point to non-existent DB path temporarily
+    # Point to a non-existent DB path temporarily
     monkeypatch.setenv("WMS_DB_NAME", "non_existent_file.db")
     # ensure directory resolvable
     resolve_backup_dir()
