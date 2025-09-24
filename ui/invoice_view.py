@@ -20,6 +20,7 @@ from models.invoice import Invoice
 from models.product import Product
 from utils.activity_log import log_action
 from utils.session import get_current_username
+from utils.ui_common import format_money
 
 
 class SelectAllOnFocus(QObject):
@@ -123,7 +124,9 @@ class InvoiceView(QWidget):
         self.total_label = QLabel()
         # Use rich text so label and amount have distinct styles
         self.total_label.setTextFormat(Qt.TextFormat.RichText)
-        self.total_label.setText("<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>GH¢ 0.00</span>")
+        self.total_label.setText(
+            f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>{format_money(0)}</span>"
+        )
         self.layout.addWidget(self.total_label)
 
         # Save Invoice Button
@@ -203,7 +206,7 @@ class InvoiceView(QWidget):
         try:
             dd.clear()
             products = Product.get_all_products()
-            names = [f"{p.product_id} - {p.name} (GH¢ {p.price})" for p in products]
+            names = [f"{p.product_id} - {p.name} ({format_money(p.price)})" for p in products]
             if names:
                 dd.addItems(names)
             self.product_completer.setModel(dd.model())
@@ -223,8 +226,8 @@ class InvoiceView(QWidget):
         for row_idx, item in enumerate(self.items):
             tbl.setItem(row_idx, 0, QTableWidgetItem(item["product_name"]))
             tbl.setItem(row_idx, 1, QTableWidgetItem(str(item["quantity"])))
-            tbl.setItem(row_idx, 2, QTableWidgetItem(f"{item['unit_price']:.2f}"))
-            tbl.setItem(row_idx, 3, QTableWidgetItem(f"{item['quantity'] * item['unit_price']:.2f}"))
+            tbl.setItem(row_idx, 2, QTableWidgetItem(format_money(item["unit_price"])))
+            tbl.setItem(row_idx, 3, QTableWidgetItem(format_money(item["quantity"] * item["unit_price"])))
 
         # Restore UI updates and signals
         tbl.blockSignals(False)
@@ -244,13 +247,13 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setRowCount(row + 1)
         self.invoice_items_table.setItem(row, 0, QTableWidgetItem(product_name))
         self.invoice_items_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
-        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(f"{unit_price:.2f}"))
-        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(f"{quantity * unit_price:.2f}"))
+        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(format_money(unit_price)))
+        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(format_money(quantity * unit_price)))
 
     def _set_invoice_row(self, row: int, quantity: int, unit_price: float):
         self.invoice_items_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
-        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(f"{unit_price:.2f}"))
-        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(f"{quantity * unit_price:.2f}"))
+        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(format_money(unit_price)))
+        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(format_money(quantity * unit_price)))
 
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
@@ -379,7 +382,7 @@ class InvoiceView(QWidget):
         total = subtotal - discount + tax
         # Update using rich-text so description and value have different styles
         self.total_label.setText(
-            f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>GH¢ {total:,.2f}</span>"
+            f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>{format_money(total)}</span>"
         )
 
     def save_invoice(self):
@@ -462,7 +465,9 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setRowCount(0)
         self.discount_input.clear()
         self.tax_input.clear()
-        self.total_label.setText("Total: GH¢ 0.00")
+        self.total_label.setText(
+            f"<b>Total:</b> <span style='font-family:Segoe UI; font-size:14px;'>{format_money(0)}</span>"
+        )
         self.items = []
         self.load_products()
         self.load_customers()

@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 
 from database.db_handler import get_db_connection
 from models.invoice import Invoice
+from utils.ui_common import format_money
 
 try:
     HAS_QPDFVIEW = True
@@ -125,7 +126,9 @@ class ReceiptView(QWidget):
             invoices = Invoice.get_all_invoices()
             # Show newly created invoices at the top
             invoices = sorted(invoices, key=lambda inv: getattr(inv, "invoice_id", 0), reverse=True)
-            invoice_strs = [f"{inv.invoice_id} - {inv.customer_name} - GH¢ {inv.total_amount:,.2f}" for inv in invoices]
+            invoice_strs = [
+                f"{inv.invoice_id} - {inv.customer_name} - {format_money(inv.total_amount)}" for inv in invoices
+            ]
             if invoice_strs:
                 dd.addItems(invoice_strs)
             # Keep completer bound to dropdown model
@@ -169,7 +172,7 @@ class ReceiptView(QWidget):
             f" &nbsp;|&nbsp; <span style='font-weight:700; color:#222;'>Number:</span> "
             f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['customer_number']}</span>"
             f" &nbsp;|&nbsp; <span style='font-weight:700; color:#222;'>Total:</span> "
-            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['total']}</span>"
+            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>GH¢ {formatted['total']}</span>"
         )
         self.details_label = QLabel(details_html)
         # Use Qt enum for text format
@@ -189,10 +192,10 @@ class ReceiptView(QWidget):
             qty = QTableWidgetItem(item[1])
             qty.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
             tbl.setItem(row, 1, qty)
-            price = QTableWidgetItem(f"GH¢ {item[2]}")
+            price = QTableWidgetItem(format_money(item[2]))
             price.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
             tbl.setItem(row, 2, price)
-            total = QTableWidgetItem(f"GH¢ {item[3]}")
+            total = QTableWidgetItem(format_money(item[3]))
             total.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
             tbl.setItem(row, 3, total)
         tbl.blockSignals(False)
