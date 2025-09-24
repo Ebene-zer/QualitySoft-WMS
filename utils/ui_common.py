@@ -13,6 +13,26 @@ SEARCH_PLACEHOLDER_CUSTOMERS = "Search customers by ID, name, phone, or address�
 SEARCH_TOOLTIP_CUSTOMERS = "Type to filter customers by any field (ID, name, phone, address)"
 
 
+def format_money(amount) -> str:
+    """Format a value as Ghana cedi currency with two decimals.
+
+    Examples:
+        1234.5 -> "GH¢ 1,234.50"
+        "1234.5" -> "GH¢ 1,234.50"
+        None -> "GH¢ 0.00"
+    """
+    try:
+        # Accept strings like "GH¢ 1,234.56"
+        if isinstance(amount, str):
+            cleaned = amount.replace("GH¢", "").replace(",", "").strip()
+            value = float(cleaned)
+        else:
+            value = float(amount)
+    except Exception:
+        value = 0.0
+    return f"GH¢ {value:,.2f}"
+
+
 def create_top_actions_row(
     parent,
     button_text: str,
