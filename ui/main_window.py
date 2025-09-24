@@ -3,7 +3,13 @@ import os
 import sys
 from datetime import datetime
 
-from PyQt6.QtCore import QEasingCurve, QParallelAnimationGroup, QPoint, QPropertyAnimation, QTimer
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QParallelAnimationGroup,
+    QPoint,
+    QPropertyAnimation,
+    QTimer,
+)
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QApplication,
@@ -28,6 +34,9 @@ from ui.more import MoreDropdown
 from ui.product_view import ProductView
 from ui.receipt_view import ReceiptView
 from ui.settings_dialog import SettingsDialog
+
+# Ensure UserView is available as an attribute on this module for tests that patch ui.main_window.UserView
+from ui.user_view import UserView  # noqa: F401
 from ui.users_dialog import UsersDialog
 from utils.backup import needs_backup, perform_backup
 from utils.branding import APP_NAME
