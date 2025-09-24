@@ -32,10 +32,15 @@ class ProductView(QWidget):
 
         self.layout = QVBoxLayout()  # Set Layout
 
-        # Input fields
+        # Input fields in a single row
+        inputs_row = QHBoxLayout()
+        inputs_row.setSpacing(10)
+
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Product Name")
-        self.layout.addWidget(self.name_input)
+        # Let name stretch to occupy remaining space
+        self.name_input.setMinimumWidth(240)
+        inputs_row.addWidget(self.name_input, 1)
 
         self.price_input = QLineEdit()
         self.price_input.setPlaceholderText("Price")
@@ -43,16 +48,22 @@ class ProductView(QWidget):
         price_validator = QDoubleValidator(0.0, 1_000_000_000.0, 2, self)
         price_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.price_input.setValidator(price_validator)
-        self.layout.addWidget(self.price_input)
+        # Reasonable width for price
+        self.price_input.setFixedWidth(130)
+        inputs_row.addWidget(self.price_input)
 
         self.stock_input = QLineEdit()
         self.stock_input.setPlaceholderText("Stock Quantity")
         # Allow only non-negative integers
         self.stock_input.setValidator(QIntValidator(0, 1_000_000_000, self))
-        self.layout.addWidget(self.stock_input)
+        # Reasonable width for stock
+        self.stock_input.setFixedWidth(150)
+        inputs_row.addWidget(self.stock_input)
 
         # Enter key support
         self.stock_input.returnPressed.connect(self.add_product)
+
+        self.layout.addLayout(inputs_row)
 
         # Add Product Button and Search (same row)
         # Reuse shared helper to build the top actions row with debounced search
@@ -329,9 +340,3 @@ class ProductView(QWidget):
                     match = True
                     break
             self.product_table.setRowHidden(row, not match)
-
-    def on_product_search_text_changed(self, _text: str):
-        # Restart debounce timer
-        if self.search_timer.isActive():
-            self.search_timer.stop()
-        self.search_timer.start()
