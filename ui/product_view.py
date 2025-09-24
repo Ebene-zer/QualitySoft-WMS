@@ -18,7 +18,6 @@ from utils.ui_common import (
     SEARCH_PLACEHOLDER_PRODUCTS,
     SEARCH_TOOLTIP_PRODUCTS,
     create_top_actions_row,
-    format_money,
 )
 
 
@@ -80,7 +79,7 @@ class ProductView(QWidget):
         # Product Table (replaces product_list)
         self.product_table = QTableWidget()
         self.product_table.setColumnCount(4)
-        self.product_table.setHorizontalHeaderLabels(["ID", "Name", "Price", "Stock"])
+        self.product_table.setHorizontalHeaderLabels(["ID", "Name", "Price (GH¢)", "Stock"])
         self.product_table.setSelectionBehavior(self.product_table.SelectionBehavior.SelectRows)
         self.product_table.setEditTriggers(self.product_table.EditTrigger.NoEditTriggers)
         # Set header resize behavior once to avoid repeated auto-resizes
@@ -165,7 +164,7 @@ class ProductView(QWidget):
         for row_idx, product in enumerate(products):
             tbl.setItem(row_idx, 0, QTableWidgetItem(str(product.product_id)))
             tbl.setItem(row_idx, 1, QTableWidgetItem(product.name))
-            tbl.setItem(row_idx, 2, QTableWidgetItem(format_money(product.price)))
+            tbl.setItem(row_idx, 2, QTableWidgetItem(f"{product.price:,.2f}"))
             tbl.setItem(row_idx, 3, QTableWidgetItem(str(product.stock_quantity)))
 
         # Restore UI updates and signals
@@ -191,7 +190,7 @@ class ProductView(QWidget):
         self.product_table.setRowCount(row_idx + 1)
         self.product_table.setItem(row_idx, 0, QTableWidgetItem(str(product_id)))
         self.product_table.setItem(row_idx, 1, QTableWidgetItem(name))
-        self.product_table.setItem(row_idx, 2, QTableWidgetItem(format_money(price)))
+        self.product_table.setItem(row_idx, 2, QTableWidgetItem(f"{price:,.2f}"))
         self.product_table.setItem(row_idx, 3, QTableWidgetItem(str(stock)))
 
     # Act upon a click on Add Product Button
@@ -250,7 +249,7 @@ class ProductView(QWidget):
         QMessageBox.information(self, "Success", "Product updated.")
         # Incremental UI update
         self.product_table.setItem(selected, 1, QTableWidgetItem(name))
-        self.product_table.setItem(selected, 2, QTableWidgetItem(format_money(price)))
+        self.product_table.setItem(selected, 2, QTableWidgetItem(f"{price:,.2f}"))
         self.product_table.setItem(selected, 3, QTableWidgetItem(str(stock)))
         self.filter_products(self.search_input.text())
         self.clear_inputs()
@@ -303,8 +302,8 @@ class ProductView(QWidget):
         self.name_input.setText(self.product_table.item(selected, 1).text())
         price_text = self.product_table.item(selected, 2).text()
         try:
-            # Strip currency prefix and thousands separators
-            price_numeric = price_text.replace("GH¢", "").replace(",", "").strip()
+            # Strip thousands separators only; headers carry currency symbol
+            price_numeric = price_text.replace(",", "").strip()
         except Exception:
             price_numeric = price_text
         self.price_input.setText(price_numeric)

@@ -335,15 +335,15 @@ class Invoice:
             [
                 item["product_name"],
                 str(item["quantity"]),
-                f"{item['unit_price']:.2f}",
-                f"{item['quantity'] * item['unit_price']:.2f}",
+                f"{item['unit_price']:,.2f}",
+                f"{item['quantity'] * item['unit_price']:,.2f}",
             ]
             for item in invoice["items"]
         ]
         total_items = sum(item["quantity"] for item in invoice["items"])
-        discount = f"{invoice.get('discount', 0):.2f}"
-        tax = f"{invoice.get('tax', 0):.2f}"
-        total = f"{invoice.get('total_amount', 0):.2f}"
+        discount = f"{invoice.get('discount', 0):,.2f}"
+        tax = f"{invoice.get('tax', 0):,.2f}"
+        total = f"{invoice.get('total_amount', 0):,.2f}"
         return {
             "invoice_number": invoice_number,
             "invoice_date": invoice_date,

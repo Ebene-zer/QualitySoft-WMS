@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 
 from database.db_handler import get_db_connection
 from models.invoice import Invoice
-from utils.ui_common import format_money
+from utils.ui_common import format_money_value
 
 try:
     HAS_QPDFVIEW = True
@@ -60,7 +60,7 @@ class ReceiptView(QWidget):
 
         self.receipt_table = QTableWidget()
         self.receipt_table.setColumnCount(4)
-        self.receipt_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Total"])
+        self.receipt_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price (GH¢)", "Total (GH¢)"])
         self.layout.addWidget(self.receipt_table)
         # Set header resize behavior once
         self.receipt_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -127,7 +127,7 @@ class ReceiptView(QWidget):
             # Show newly created invoices at the top
             invoices = sorted(invoices, key=lambda inv: getattr(inv, "invoice_id", 0), reverse=True)
             invoice_strs = [
-                f"{inv.invoice_id} - {inv.customer_name} - {format_money(inv.total_amount)}" for inv in invoices
+                f"{inv.invoice_id} - {inv.customer_name} - {format_money_value(inv.total_amount)}" for inv in invoices
             ]
             if invoice_strs:
                 dd.addItems(invoice_strs)
@@ -165,14 +165,14 @@ class ReceiptView(QWidget):
         if hasattr(self, "details_label"):
             self.layout.removeWidget(self.details_label)
             self.details_label.deleteLater()
-        # Use rich text so the description (label) and actual data have different font styles
+        # Use rich text; keep GH¢ out of inline values
         details_html = (
             f"<span style='font-weight:700; color:#222;'>Customer Name:</span> "
             f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['customer_name']}</span>"
             f" &nbsp;|&nbsp; <span style='font-weight:700; color:#222;'>Number:</span> "
             f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['customer_number']}</span>"
             f" &nbsp;|&nbsp; <span style='font-weight:700; color:#222;'>Total:</span> "
-            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>GH¢ {formatted['total']}</span>"
+            f"<span style='font-family:Segoe UI; font-size:13px; color:#333;'>{formatted['total']}</span>"
         )
         self.details_label = QLabel(details_html)
         # Use Qt enum for text format
@@ -192,10 +192,10 @@ class ReceiptView(QWidget):
             qty = QTableWidgetItem(item[1])
             qty.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
             tbl.setItem(row, 1, qty)
-            price = QTableWidgetItem(format_money(item[2]))
+            price = QTableWidgetItem(format_money_value(item[2]))
             price.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
             tbl.setItem(row, 2, price)
-            total = QTableWidgetItem(format_money(item[3]))
+            total = QTableWidgetItem(format_money_value(item[3]))
             total.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
             tbl.setItem(row, 3, total)
         tbl.blockSignals(False)

@@ -14,7 +14,7 @@ SEARCH_TOOLTIP_CUSTOMERS = "Type to filter customers by any field (ID, name, pho
 
 
 def format_money(amount) -> str:
-    """Format a value as Ghana cedi currency with two decimals.
+    """Format a value as Ghana cedi currency with two decimals, including symbol.
 
     Examples:
         1234.5 -> "GH¢ 1,234.50"
@@ -31,6 +31,26 @@ def format_money(amount) -> str:
     except Exception:
         value = 0.0
     return f"GH¢ {value:,.2f}"
+
+
+def format_money_value(amount) -> str:
+    """Format a numeric amount with two decimals and thousands separators, without currency symbol.
+
+    Accepts strings that might include "GH¢" or commas and normalizes to a plain number string.
+    Examples:
+        1234.5 -> "1,234.50"
+        "GH¢ 1,234.5" -> "1,234.50"
+        None -> "0.00"
+    """
+    try:
+        if isinstance(amount, str):
+            cleaned = amount.replace("GH¢", "").replace(",", "").strip()
+            value = float(cleaned or 0)
+        else:
+            value = float(amount)
+    except Exception:
+        value = 0.0
+    return f"{value:,.2f}"
 
 
 def create_top_actions_row(

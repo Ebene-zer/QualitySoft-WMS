@@ -20,7 +20,7 @@ from models.invoice import Invoice
 from models.product import Product
 from utils.activity_log import log_action
 from utils.session import get_current_username
-from utils.ui_common import format_money
+from utils.ui_common import format_money, format_money_value
 
 
 class SelectAllOnFocus(QObject):
@@ -94,7 +94,7 @@ class InvoiceView(QWidget):
         # Invoice Items Table
         self.invoice_items_table = QTableWidget()
         self.invoice_items_table.setColumnCount(4)
-        self.invoice_items_table.setHorizontalHeaderLabels(["Product", "Quantity", "Unit Price", "Total"])
+        self.invoice_items_table.setHorizontalHeaderLabels(["Product", "Quantity", "Unit Price (GH¢)", "Total (GH¢)"])
         self.invoice_items_table.setSelectionBehavior(self.invoice_items_table.SelectionBehavior.SelectRows)
         self.invoice_items_table.setEditTriggers(self.invoice_items_table.EditTrigger.NoEditTriggers)
         # Set header resize behavior once to avoid repeated auto-resizes
@@ -226,8 +226,8 @@ class InvoiceView(QWidget):
         for row_idx, item in enumerate(self.items):
             tbl.setItem(row_idx, 0, QTableWidgetItem(item["product_name"]))
             tbl.setItem(row_idx, 1, QTableWidgetItem(str(item["quantity"])))
-            tbl.setItem(row_idx, 2, QTableWidgetItem(format_money(item["unit_price"])))
-            tbl.setItem(row_idx, 3, QTableWidgetItem(format_money(item["quantity"] * item["unit_price"])))
+            tbl.setItem(row_idx, 2, QTableWidgetItem(format_money_value(item["unit_price"])))
+            tbl.setItem(row_idx, 3, QTableWidgetItem(format_money_value(item["quantity"] * item["unit_price"])))
 
         # Restore UI updates and signals
         tbl.blockSignals(False)
@@ -247,13 +247,13 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setRowCount(row + 1)
         self.invoice_items_table.setItem(row, 0, QTableWidgetItem(product_name))
         self.invoice_items_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
-        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(format_money(unit_price)))
-        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(format_money(quantity * unit_price)))
+        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(format_money_value(unit_price)))
+        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(format_money_value(quantity * unit_price)))
 
     def _set_invoice_row(self, row: int, quantity: int, unit_price: float):
         self.invoice_items_table.setItem(row, 1, QTableWidgetItem(str(quantity)))
-        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(format_money(unit_price)))
-        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(format_money(quantity * unit_price)))
+        self.invoice_items_table.setItem(row, 2, QTableWidgetItem(format_money_value(unit_price)))
+        self.invoice_items_table.setItem(row, 3, QTableWidgetItem(format_money_value(quantity * unit_price)))
 
     def add_item_to_invoice(self):
         if self.product_dropdown.currentIndex() == -1:
