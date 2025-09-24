@@ -14,7 +14,7 @@ import datetime
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QPoint, Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -24,12 +24,24 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
 
 from database.db_handler import get_db_connection
+from utils import period_bounds
 from utils.activity_log import fetch_recent
+
+try:
+    from utils.ui_common import format_money  # type: ignore[attr-defined]
+except Exception:
+
+    def format_money(amount) -> str:
+        try:
+            return f"GH¢ {float(amount):,.2f}"
+        except Exception:
+            return "GH¢ 0.00"
 
 
 # Embedded widget for sales report
@@ -84,62 +96,47 @@ class SalesReportWidget(QWidget):
         try:
             cursor = conn.cursor()
             today = datetime.date.today()
-            if report_type == "Daily":
-                iso_start = today.strftime("%Y-%m-%d")
-                iso_end = iso_start
-                cursor.execute(
-                    """
-                    SELECT invoice_date, total_amount FROM invoices
-                    WHERE DATE(invoice_date) = ? OR invoice_date LIKE ?
-                """,
-                    (iso_start, f"{iso_start}%"),
-                )
-            elif report_type == "Weekly":
-                iso_start = (today - datetime.timedelta(days=today.weekday())).strftime("%Y-%m-%d")
-                iso_end = today.strftime("%Y-%m-%d")
-                cursor.execute(
-                    """
-                    SELECT invoice_date, total_amount FROM invoices
-                    WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-                """,
-                    (iso_start, iso_end, iso_start, iso_end),
-                )
-            elif report_type == "Monthly":
-                iso_start = today.replace(day=1).strftime("%Y-%m-%d")
-                iso_end = today.strftime("%Y-%m-%d")
-                cursor.execute(
-                    """
-                    SELECT invoice_date, total_amount FROM invoices
-                    WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-                """,
-                    (iso_start, iso_end, iso_start, iso_end),
-                )
-            elif report_type == "Annual":
-                iso_start = today.replace(month=1, day=1).strftime("%Y-%m-%d")
-                iso_end = today.strftime("%Y-%m-%d")
-                cursor.execute(
-                    """
-                    SELECT invoice_date, total_amount FROM invoices
-                    WHERE (DATE(invoice_date) BETWEEN ? AND ?) OR (invoice_date >= ? AND invoice_date <= ?)
-                """,
-                    (iso_start, iso_end, iso_start, iso_end),
-                )
-            else:
-                # Invalid type; just ignore if widget is already going away
+
+            # Use centralized helper for period bounds (end-exclusive)
+            kind_map = {
+                "Daily": "today",
+                "Weekly": "this_week",
+                "Monthly": "this_month",
+                "Annual": "this_year",
+            }
+            kind = kind_map.get(report_type)
+            if not kind:
                 return
+            start_iso, end_iso = period_bounds(today, kind)
 
-            rows = cursor.fetchall()
+            # SQL uses timestamps; append midnight time component
+            iso_start = f"{start_iso} 00:00:00"
+            iso_end = f"{end_iso} 00:00:00"
 
-            total_sales = sum(row[1] for row in rows)
-            # Convert ISO dates to Day/Month/Year for display and build HTML output
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(total_amount), 0.0) AS total_sales,
+                       COUNT(*) AS txns
+                FROM invoices
+                WHERE invoice_date >= ? AND invoice_date < ?
+                """,
+                (iso_start, iso_end),
+            )
+            agg = cursor.fetchone() or (0.0, 0)
+            total_sales = float(agg[0] or 0.0)
+            txns = int(agg[1] or 0)
+
+            # Convert to display day/month/year; display end is inclusive (end - 1 day)
             try:
-                display_start = datetime.datetime.strptime(iso_start, "%Y-%m-%d").strftime("%d/%m/%Y")
-                display_end = datetime.datetime.strptime(iso_end, "%Y-%m-%d").strftime("%d/%m/%Y")
+                start_date = datetime.date.fromisoformat(start_iso)
+                end_exclusive = datetime.date.fromisoformat(end_iso)
+                display_start = start_date.strftime("%d/%m/%Y")
+                display_end = (end_exclusive - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
             except Exception:
-                display_start = iso_start
-                display_end = iso_end
+                display_start = start_iso
+                display_end = end_iso
 
-            if not rows:
+            if txns == 0:
                 report_html = (
                     f"<span style='font-weight:Bold; font-size:18px; color:#1a237e;'>No sales found</span><br/>"
                     f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Period:</span> "
@@ -155,9 +152,9 @@ class SalesReportWidget(QWidget):
                     f"{display_start} to {display_end}</span><br/>"
                     f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Total Sales:</span> "
                     f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>"
-                    f"GHS{total_sales:,.2f}</span><br/>"
+                    f"{format_money(total_sales)}</span><br/>"
                     f"<span style='font-weight:Bold; font-size:16px; color:#00000e;'>Transactions:</span> "
-                    f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>{len(rows)}</span>"
+                    f"<span style='font-family:Segue UI; font-size:14px; color:#263238;'>{txns}</span>"
                 )
 
             # Safely update label; it might be deleted if the widget was torn down
@@ -207,6 +204,12 @@ class GraphWidget(QWidget):
         self.canvas.setStyleSheet("background-color: #e3f2fd; border-radius: 8px;")
         layout.addWidget(self.canvas)
         self.setLayout(layout)
+        # State for tooltips
+        self._hover_cid = None
+        self._plot_kind = None
+        self._bars = []
+        self._data_labels = []
+        self._data_values = []
 
     def show_graph(self):
         graph_type = self.type_box.currentText()
@@ -244,13 +247,76 @@ class GraphWidget(QWidget):
         ax = self.figure.add_subplot(111)
         if graph_type == "Line Chart":
             ax.plot(x, y, marker="o")
+            self._plot_kind = "line"
+            self._bars = []
         else:
-            ax.bar(x, y)
+            bars = ax.bar(x, y)
+            self._plot_kind = "bar"
+            self._bars = list(bars)
+        # Store data for tooltip
+        self._data_labels = list(x)
+        self._data_values = list(y)
         ax.set_xlabel(xlabel)
         ax.set_ylabel("Total Sales")
         ax.set_title(f"Sales by {xlabel}")
         self.figure.tight_layout()
         self.canvas.draw()
+        # Connect hover handler for tooltips
+        try:
+            if self._hover_cid is not None:
+                self.canvas.mpl_disconnect(self._hover_cid)
+        except Exception:
+            pass
+        self._hover_cid = self.canvas.mpl_connect("motion_notify_event", self._on_motion)
+
+    def _on_motion(self, event):
+        # Hide tooltip if not over axes
+        if event is None or event.inaxes is None:
+            QToolTip.hideText()
+            return
+        try:
+            # Compute and show tooltip
+            text = None
+            if self._plot_kind == "bar" and self._bars:
+                for idx, rect in enumerate(self._bars):
+                    contains, _ = rect.contains(event)
+                    if contains:
+                        label = str(self._data_labels[idx]) if idx < len(self._data_labels) else ""
+                        value = self._data_values[idx] if idx < len(self._data_values) else ""
+                        text = f"{label}: {format_money(value)}"
+                        break
+            elif self._plot_kind == "line" and self._data_values:
+                # Find nearest data point in pixel space
+                ax = event.inaxes
+                trans = ax.transData.transform
+                mx, my = event.x, event.y
+                best_idx = None
+                best_dist2 = float("inf")
+                # With categorical x, data x positions map to indices 0..N-1
+                for i, val in enumerate(self._data_values):
+                    px, py = trans((i, val))
+                    d2 = (px - mx) ** 2 + (py - my) ** 2
+                    if d2 < best_dist2:
+                        best_dist2 = d2
+                        best_idx = i
+                # 10px threshold
+                if best_idx is not None and best_dist2 <= 10**2:
+                    label = str(self._data_labels[best_idx]) if best_idx < len(self._data_labels) else ""
+                    value = self._data_values[best_idx]
+                    text = f"{label}: {format_money(value)}"
+            if text:
+                # Show tooltip near cursor
+                try:
+                    gp = self.canvas.mapToGlobal(QPoint(int(event.x), int(event.y)))
+                except Exception:
+                    # Fallback: show without position binding
+                    gp = None
+                QToolTip.showText(gp, text, self.canvas)
+            else:
+                QToolTip.hideText()
+        except Exception:
+            # Never break interaction due to tooltip issues
+            pass
 
 
 # Embedded widget for activity log
@@ -323,16 +389,18 @@ class MoreDropdown(QWidget):
         self._on_index_changed(self.dropdown.currentIndex())
 
     def _on_index_changed(self, index):
-        # Clear content area
+        # Defensive: Check index and dropdown count
+        if self.dropdown.count() == 0 or index < 0:
+            return
+        selected_text = self.dropdown.itemText(index)
+
+        # Clear content area for functional tabs
         while self.content_area.count():
             child = self.content_area.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
         self.current_widget = None  # Keep a reference to prevent garbage collection
-        # Defensive: Check index and dropdown count
-        if self.dropdown.count() == 0 or index < 0:
-            return
-        selected_text = self.dropdown.itemText(index)
+
         if selected_text == "Sales Report":
             report_widget = SalesReportWidget(self.user_role, self)
             self.content_area.addWidget(report_widget)
@@ -348,6 +416,7 @@ class MoreDropdown(QWidget):
             self.content_area.addWidget(log_widget)
             log_widget.show()
             self.current_widget = log_widget
+
         if self.on_option_selected:
             self.on_option_selected(index)
 
