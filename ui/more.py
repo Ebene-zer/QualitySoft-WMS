@@ -382,17 +382,24 @@ class ActivityLogWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
+
+        # Simple table without extra controls or heavy styling
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Timestamp", "User", "Action", "Details"])
         self.table.setEditTriggers(self.table.EditTrigger.NoEditTriggers)
-        # Resize columns to fill once to avoid repeated auto-resizes
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        btn_row = QHBoxLayout()
-        self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.clicked.connect(self.load_logs)
-        btn_row.addWidget(self.refresh_btn)
-        layout.addLayout(btn_row)
+        # Apply requested styling: header bold black 16px; data 14px
+        self.table.setStyleSheet(
+            "QHeaderView::section { font-weight: bold; color: black; font-size: 16px; }\n"
+            "QTableWidget { font-size: 14px; }"
+        )
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setVisible(False)
+
         layout.addWidget(self.table)
         self.setLayout(layout)
         self.load_logs()
@@ -400,86 +407,63 @@ class ActivityLogWidget(QWidget):
     def load_logs(self):
         rows = fetch_recent(200)
         tbl = self.table
-        prev_sorting = tbl.isSortingEnabled()
         tbl.setSortingEnabled(False)
-        tbl.setUpdatesEnabled(False)
-        tbl.blockSignals(True)
         tbl.setRowCount(len(rows))
         for r_idx, row in enumerate(rows):
-            for c_idx, val in enumerate(row):
+            # row: (timestamp, username, action, details)
+            ts, user, action, details = row
+            for c_idx, val in enumerate((ts, user, action, details)):
                 item = QTableWidgetItem(str(val))
-                item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 tbl.setItem(r_idx, c_idx, item)
-        tbl.blockSignals(False)
-        tbl.setUpdatesEnabled(True)
-        tbl.setSortingEnabled(prev_sorting)
+        tbl.setSortingEnabled(True)
 
 
 class MoreDropdown(QWidget):
-    def __init__(self, on_option_selected=None, parent=None, user_role=None):
+    def __init__(self, on_option_selected=None, parent=None, user_role: str = "Manager"):
         super().__init__(parent)
-        self.user_role = user_role  # Store user_role for later use
-        layout = QVBoxLayout(self)
-        self.dropdown = QComboBox()
-        self.dropdown.setMinimumWidth(200)
-        self.dropdown.setMinimumHeight(35)
-        self.dropdown.setStyleSheet("font-size: 16px;")
-        # Only show 'Graph' if user is admin or ceo
-        items = ["Sales Report"]
-        if user_role and user_role.lower() in ["admin", "ceo"]:
-            items.append("Graph")
-            items.append("Activity Log")
-        self.dropdown.addItems(items)
-        self.dropdown.setEditable(True)
-        self.dropdown.lineEdit().setReadOnly(True)
-        self.dropdown.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.dropdown.lineEdit().returnPressed.connect(self._on_enter)
-        layout.addWidget(self.dropdown)
-        # Add a content area for feature widgets
-        self.content_area = QVBoxLayout()
-        layout.addLayout(self.content_area)
-        layout.addStretch(1)  # Push everything up
-        self.setLayout(layout)
         self.on_option_selected = on_option_selected
+        self.user_role = user_role
+        outer = QVBoxLayout(self)
+        self.dropdown = QComboBox()
+        outer.addWidget(self.dropdown)
+        self.content_area = QWidget()
+        self.content_layout = QVBoxLayout(self.content_area)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(self.content_area)
+        # Options by role
+        role = (user_role or "").lower()
+        options = ["Sales Report"]
+        if role in ("admin", "ceo"):
+            options += ["Graph", "Activity Log"]
+        self.dropdown.addItems(options)
         self.dropdown.currentIndexChanged.connect(self._on_index_changed)
-        # Initialize current_widget early for tests and call handler immediately
-        self.current_widget = None
-        self._on_index_changed(self.dropdown.currentIndex())
+        # Default: show Sales Report
+        self.current_widget: QWidget | None = None
+        self._on_index_changed(0)
 
-    def _on_index_changed(self, index):
-        # Defensive: Check index and dropdown count
-        if self.dropdown.count() == 0 or index < 0:
-            return
-        selected_text = self.dropdown.itemText(index)
-
-        # Clear content area for functional tabs
-        while self.content_area.count():
-            child = self.content_area.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-        self.current_widget = None  # Keep a reference to prevent garbage collection
-
-        if selected_text == "Sales Report":
-            report_widget = SalesReportWidget(self.user_role, self)
-            self.content_area.addWidget(report_widget)
-            report_widget.show()
-            self.current_widget = report_widget
-        elif selected_text == "Graph":
-            graph_widget = GraphWidget(self)
-            self.content_area.addWidget(graph_widget)
-            graph_widget.show()
-            self.current_widget = graph_widget
-        elif selected_text == "Activity Log":
-            log_widget = ActivityLogWidget(self)
-            self.content_area.addWidget(log_widget)
-            log_widget.show()
-            self.current_widget = log_widget
-
-        if self.on_option_selected:
-            self.on_option_selected(index)
+    def _on_index_changed(self, index: int):
+        # Clear current widget
+        if self.current_widget is not None:
+            self.current_widget.setParent(None)
+            self.current_widget.deleteLater()
+            self.current_widget = None
+        label = self.dropdown.itemText(index)
+        if label == "Sales Report":
+            self.current_widget = SalesReportWidget(user_role=self.user_role)
+        elif label == "Graph":
+            self.current_widget = GraphWidget()
+        elif label == "Activity Log":
+            self.current_widget = ActivityLogWidget()
+        else:
+            self.current_widget = QWidget()
+        self.content_layout.addWidget(self.current_widget)
+        if callable(self.on_option_selected):
+            try:
+                self.on_option_selected(label)
+            except Exception:
+                pass
 
     def _on_enter(self):
-        # Simulate dropdown selection on Enter key
-        index = self.dropdown.currentIndex()
-        self.dropdown.setCurrentIndex(index)
-        # _on_index_changed will be triggered automatically
+        # Hook for keyboard navigation; optional
+        self.dropdown.setFocus()

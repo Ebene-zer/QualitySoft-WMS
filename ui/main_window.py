@@ -82,6 +82,7 @@ class MainWindow(QWidget):
             # Add Users to menu bar, opens Users dialog window
             users_action = menubar.addAction("Users")
             users_action.triggered.connect(self.open_users_dialog)
+        # Removed 'More' from the menu bar (reverted)
         help_action = menubar.addAction("Help")
         help_action.triggered.connect(self.open_help_dialog)
         main_layout.setMenuBar(menubar)
@@ -94,6 +95,7 @@ class MainWindow(QWidget):
 
         def create_nav_button(text, index, height=40, font_size=10, width=None):
             btn = QPushButton(text)
+            btn.setProperty("viewIndex", index)
             btn.setFixedHeight(height)
             btn.setFont(QFont("Segue UI", font_size, QFont.Weight.Medium))
             if width:
@@ -104,8 +106,9 @@ class MainWindow(QWidget):
             self.nav_buttons.append(btn)
             return btn
 
-        # Place 'More' button first, as a square with tooltip
+        # Place 'More' button first, as a square with tooltip (restored)
         btn_more = QPushButton("\u2630")
+        btn_more.setProperty("viewIndex", 0)
         btn_more.setFixedHeight(40)
         btn_more.setFixedWidth(40)
         btn_more.setFont(QFont("Segue UI", 14, QFont.Weight.Medium))
@@ -124,8 +127,6 @@ class MainWindow(QWidget):
         create_nav_button("Invoice", 3, 40, 11)
         create_nav_button("Receipts", 4, 40, 11)
 
-        # Admin/CEO extra navigation buttons removed: Users and Settings are menu-only now
-
         # Move Logout to the end so it's the last (rightmost) button
         btn_logout = QPushButton("Logout")
         btn_logout.setFixedHeight(40)
@@ -143,6 +144,7 @@ class MainWindow(QWidget):
         """)
         btn_logout.clicked.connect(self.logout)
         button_bar_layout.addWidget(btn_logout)
+        # Do not count Logout as a nav button (reverted)
 
         main_layout.addLayout(button_bar_layout)
 
@@ -397,12 +399,16 @@ class MainWindow(QWidget):
         if hasattr(widget, "load_users"):
             widget.load_users()
 
-        # Update button styles to highlight active one
-        for i, btn in enumerate(self.nav_buttons):
-            if i == index:
-                btn.setStyleSheet(self.button_style(normal=False))
-            else:
-                btn.setStyleSheet(self.button_style(normal=True))
+        # Update button styles to highlight active one (match each button's target index)
+        for btn in self.nav_buttons:
+            try:
+                target = btn.property("viewIndex")
+                if target == index:
+                    btn.setStyleSheet(self.button_style(normal=False))
+                else:
+                    btn.setStyleSheet(self.button_style(normal=True))
+            except Exception:
+                pass
 
     def logout(self):
         from ui.login_window import LoginWindow
@@ -426,6 +432,19 @@ class MainWindow(QWidget):
     def open_users_dialog(self):
         dlg = UsersDialog(current_user_role=self.user_role, parent=self)
         dlg.exec()
+
+    def _select_more_option(self, label: str):
+        """Switch to the More tab and select the given option on the dropdown."""
+        try:
+            # Ensure we are on the More view
+            self.switch_view(0)
+            # Set dropdown selection if available
+            if hasattr(self, "more_dropdown_widget") and self.more_dropdown_widget is not None:
+                dd = getattr(self.more_dropdown_widget, "dropdown", None)
+                if dd is not None:
+                    dd.setCurrentText(label)
+        except Exception:
+            pass
 
     def closeEvent(self, event):
         """Perform an automatic backup if one is due before closing. Show UI warning if it fails."""
