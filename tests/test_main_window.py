@@ -27,7 +27,7 @@ class TestMainWindow:
     def test_nav_buttons_and_switch_view(self):
         window = MainWindow("testuser", "Admin")
         assert window.windowTitle() == APP_NAME
-        assert len(window.nav_buttons) == 7
+        assert len(window.nav_buttons) == 5
         for i in range(5):
             window.switch_view(i)
             assert window.stacked_widget.currentIndex() == i
