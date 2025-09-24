@@ -20,5 +20,15 @@ class UsersDialog(QDialog):
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, parent=self)
         buttons.rejected.connect(self.reject)
+        # Dark-red hover for Close button for consistency
+        try:
+            btn_close = buttons.button(QDialogButtonBox.StandardButton.Close)
+            if btn_close is not None:
+                btn_close.setStyleSheet(
+                    "QPushButton { padding: 8px 16px; border-radius: 6px; }"
+                    "QPushButton:hover { background-color: #b71c1c; color: white; }"
+                )
+        except Exception:
+            pass
         layout.addWidget(buttons)
         self.setLayout(layout)
