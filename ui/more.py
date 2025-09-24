@@ -30,18 +30,10 @@ from PyQt6.QtWidgets import (
 )
 
 from database.db_handler import get_db_connection
+from models.product import Product
 from utils import period_bounds
 from utils.activity_log import fetch_recent
-
-try:
-    from utils.ui_common import format_money  # type: ignore[attr-defined]
-except Exception:
-
-    def format_money(amount) -> str:
-        try:
-            return f"GH¢ {float(amount):,.2f}"
-        except Exception:
-            return "GH¢ 0.00"
+from utils.ui_common import format_money
 
 
 # Embedded widget for sales report
@@ -187,10 +179,18 @@ class GraphWidget(QWidget):
         self.period_box.setMinimumHeight(40)
         self.period_box.setStyleSheet("font-size: 18px; background-color: #e3eafc; border-radius: 8px; padding: 6px;")
         self.period_box.addItems(["Monthly", "Yearly"])
+        # Add product filter (default: All Products)
         controls_layout.addWidget(QLabel("<span style='color:#1a237e;font-weight:bold;'>Graph Type:</span>"))
         controls_layout.addWidget(self.type_box)
         controls_layout.addWidget(QLabel("<span style='color:#1a237e;font-weight:bold;'>Period:</span>"))
         controls_layout.addWidget(self.period_box)
+        controls_layout.addWidget(QLabel("<span style='color:#1a237e;font-weight:bold;'>Product:</span>"))
+        self.product_box = QComboBox()
+        self.product_box.setMinimumHeight(40)
+        self.product_box.setStyleSheet("font-size: 18px; background-color: #e3eafc; border-radius: 8px; padding: 6px;")
+        controls_layout.addWidget(self.product_box)
+        # Populate products
+        self._load_products()
         show_btn = QPushButton("Show Graph")
         show_btn.setMinimumHeight(38)
         show_btn.setStyleSheet(
@@ -211,18 +211,59 @@ class GraphWidget(QWidget):
         self._data_labels = []
         self._data_values = []
 
+    def _load_products(self):
+        try:
+            self.product_box.blockSignals(True)
+            self.product_box.clear()
+            self.product_box.addItem("All Products")
+            for p in Product.get_all_products():
+                self.product_box.addItem(f"{p.product_id} - {p.name}")
+        except Exception:
+            # Fallback to only All Products if model access fails
+            if self.product_box.count() == 0:
+                self.product_box.addItem("All Products")
+        finally:
+            self.product_box.blockSignals(False)
+
     def show_graph(self):
         graph_type = self.type_box.currentText()
         period = self.period_box.currentText()
+        # Determine selected product (None means all)
+        sel = self.product_box.currentText() if hasattr(self, "product_box") else "All Products"
+        product_id = None
+        product_label = None
+        if sel and sel != "All Products":
+            try:
+                product_id = int(sel.split(" - ")[0])
+                product_label = sel.split(" - ", 1)[1]
+            except Exception:
+                product_id = None
+                product_label = None
         conn = get_db_connection()
         cursor = conn.cursor()
         if period == "Monthly":
-            cursor.execute("""
-                SELECT strftime('%Y-%m', invoice_date) as period, SUM(total_amount) as total
-                FROM invoices
-                GROUP BY period
-                ORDER BY period
-            """)
+            if product_id is None:
+                cursor.execute(
+                    """
+                    SELECT strftime('%Y-%m', invoice_date) as period, SUM(total_amount) as total
+                    FROM invoices
+                    GROUP BY period
+                    ORDER BY period
+                    """
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT strftime('%Y-%m', i.invoice_date) as period,
+                           SUM(ii.quantity * ii.unit_price) as total
+                    FROM invoices i
+                    JOIN invoice_items ii ON ii.invoice_id = i.invoice_id
+                    WHERE ii.product_id = ?
+                    GROUP BY period
+                    ORDER BY period
+                    """,
+                    (product_id,),
+                )
             x = []
             y = []
             for row in cursor.fetchall():
@@ -230,12 +271,28 @@ class GraphWidget(QWidget):
                 y.append(row[1])
             xlabel = "Month"
         else:
-            cursor.execute("""
-                SELECT strftime('%Y', invoice_date) as period, SUM(total_amount) as total
-                FROM invoices
-                GROUP BY period
-                ORDER BY period
-            """)
+            if product_id is None:
+                cursor.execute(
+                    """
+                    SELECT strftime('%Y', invoice_date) as period, SUM(total_amount) as total
+                    FROM invoices
+                    GROUP BY period
+                    ORDER BY period
+                    """
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT strftime('%Y', i.invoice_date) as period,
+                           SUM(ii.quantity * ii.unit_price) as total
+                    FROM invoices i
+                    JOIN invoice_items ii ON ii.invoice_id = i.invoice_id
+                    WHERE ii.product_id = ?
+                    GROUP BY period
+                    ORDER BY period
+                    """,
+                    (product_id,),
+                )
             x = []
             y = []
             for row in cursor.fetchall():
@@ -258,7 +315,8 @@ class GraphWidget(QWidget):
         self._data_values = list(y)
         ax.set_xlabel(xlabel)
         ax.set_ylabel("Total Sales")
-        ax.set_title(f"Sales by {xlabel}")
+        title_extra = f" for {product_label}" if product_label else ""
+        ax.set_title(f"Sales{title_extra} by {xlabel}")
         self.figure.tight_layout()
         self.canvas.draw()
         # Connect hover handler for tooltips
