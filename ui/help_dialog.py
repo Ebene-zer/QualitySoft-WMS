@@ -18,12 +18,31 @@ class NavigationHelpDialog(QDialog):
         layout.setSpacing(10)
         text = QLabel(
             """
-            <div style='font-size:13px; color:#2c3e50;'>
+            <div style='font-size:14px; color:#1f2937; line-height:1.6;'>
             <p><b>Top Bar:</b> Use the buttons Products, Customers, Invoice,
             Receipts, and Users (if visible) to switch views.</p>
-            <p><b>More:</b> Access Sales Report, Graph, and Activity Log under the More tab based on your role.</p>
-            <p><b>Settings:</b> Admin/CEO can open Settings from the top bar.</p>
+            <p><b>More:</b> Under the More tab you can open Sales Report, Graph, and
+            Activity Log (availability depends on your role).</p>
+            <p><b>Graphs:</b> Choose Line or Bar, select Monthly or Yearly, and pick a
+            Product. The default is <i>All Products</i>; select a specific product to see
+            its individual sales trend. Click <i>Show Graph</i> to update.</p>
+            <p><b>Settings:</b> Admin/CEO can open Settings from the top bar to update
+            business info, receipt footer, backup directory, and retention.</p>
             <p><b>Logout:</b> Click Logout on the top bar to end your session.</p>
+            <hr/>
+            <p style='font-weight:700;'>Getting Started (Basics)</p>
+            <ol>
+              <li><b>Add Products:</b> Go to Products and add name, price, and stock.</li>
+              <li><b>Add Customers:</b> Go to Customers and add at least one customer.</li>
+              <li><b>Create an Invoice:</b> In Invoice, select a customer, add items with
+                  quantities, then click <i>Save Invoice</i>.</li>
+              <li><b>View/Print Receipts:</b> Open Receipts, select the invoice, then
+                  Load to preview. You can Print or Export to PDF.</li>
+              <li><b>Review Performance:</b> In More → Sales Report or Graph, view totals
+                  and trends. Use the Product filter in Graph for item-specific sales.</li>
+              <li><b>Backups:</b> In Settings, choose a backup folder and retention. Use
+                  <i>Backup Now</i> and review the last backup time.</li>
+            </ol>
             </div>
             """
         )
@@ -53,7 +72,7 @@ class HelpDialog(QDialog):
         layout.setSpacing(10)
 
         desc = QLabel(f"Choose an option below for help with {APP_NAME}:")
-        desc.setStyleSheet("color:#2c3e50;")
+        desc.setStyleSheet("color:#1f2937; font-size:14px;")
         layout.addWidget(desc)
 
         btn_about = QPushButton(f"About {APP_NAME}")
@@ -75,6 +94,16 @@ class HelpDialog(QDialog):
 
         close_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, parent=self)
         close_box.rejected.connect(self.reject)
+        # Add dark-red hover to the Close button for better affordance
+        try:
+            btn_close = close_box.button(QDialogButtonBox.StandardButton.Close)
+            if btn_close is not None:
+                btn_close.setStyleSheet(
+                    "QPushButton { padding: 8px 16px; border-radius: 6px; }"
+                    "QPushButton:hover { background-color: #b71c1c; color: white; }"
+                )
+        except Exception:
+            pass
         layout.addWidget(close_box)
 
     def open_navigation_help(self):

@@ -3,7 +3,7 @@ from datetime import datetime
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
-from utils.branding import APP_NAME, APP_VERSION
+from utils.branding import APP_NAME, APP_VERSION, SUPPORT_EMAIL, SUPPORT_PHONES
 
 
 class AboutDialog(QDialog):
@@ -31,6 +31,49 @@ class AboutDialog(QDialog):
         for w in (title, subtitle, copyright_lbl, license_lbl):
             w.setTextFormat(Qt.TextFormat.RichText)
             layout.addWidget(w)
+
+        # Useful information for users (readable, brief)
+        about_body = QLabel(
+            """
+            <div style='font-size:13px; color:#1f2937; line-height:1.6; margin-top:6px;'>
+              <p><b>Overview:</b> Tradia helps you manage products, customers, invoices, and receipts with
+              built-in backups and role-based access.</p>
+              <p><b>Highlights:</b></p>
+              <ul>
+                <li>Inventory and pricing management</li>
+                <li>Customer records with purchase history</li>
+                <li>Invoicing with printable / PDF receipts</li>
+                <li>Sales reports and graphs with product filter</li>
+                <li>Configurable backups and retention</li>
+              </ul>
+              <p><i>Tip:</i> Start by adding products and customers,
+              then create your first invoice from the Invoice tab.</p>
+            </div>
+            """
+        )
+        about_body.setTextFormat(Qt.TextFormat.RichText)
+        about_body.setWordWrap(True)
+        layout.addWidget(about_body)
+
+        # Support & Contact
+        support_hdr = QLabel("Support")
+        support_hdr.setStyleSheet("font-weight:700; color:#111827; margin-top:10px; font-size:14px;")
+        layout.addWidget(support_hdr)
+        # Build contact HTML dynamically
+        phones_html = " / ".join(f"<a href='tel:{p}'>{p}</a>" if p else "" for p in (SUPPORT_PHONES or []) if p)
+        email_html = f"<a href='mailto:{SUPPORT_EMAIL}'>{SUPPORT_EMAIL}</a>" if SUPPORT_EMAIL else ""
+        parts = ["<div style='font-size:13px; color:#1f2937; line-height:1.6;'>"]
+        if email_html:
+            parts.append(f"<p><b>Email:</b> {email_html}</p>")
+        if phones_html:
+            parts.append(f"<p><b>Contact:</b> {phones_html}</p>")
+        parts.append("</div>")
+        support_html = "".join(parts)
+        support_txt = QLabel(support_html)
+        support_txt.setTextFormat(Qt.TextFormat.RichText)
+        support_txt.setOpenExternalLinks(True)
+        support_txt.setWordWrap(True)
+        layout.addWidget(support_txt)
 
         layout.addStretch(1)
 
