@@ -14,11 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12"]
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: 1
       PYTHONUNBUFFERED: 1
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       QT_QPA_PLATFORM: offscreen
       MPLBACKEND: Agg
     steps:
@@ -51,13 +50,6 @@ jobs:
 
       - name: Run tests with coverage
         run: |
+          pip install coverage
           coverage run -m pytest -q
-          coverage xml
-
-      - name: Upload coverage to Codecov (optional)
-        if: ${{ success() && env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: false
-          token: ${{ env.CODECOV_TOKEN }}
+          coverage report -m
