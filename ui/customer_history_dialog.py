@@ -27,6 +27,10 @@ class CustomerHistoryDialog(QDialog):
     def __init__(self, parent, customer_id: int, customer_name: str, page_size: int = 10):
         super().__init__(parent)
         self.setWindowTitle(f"Purchase History — {customer_name}")
+        # Enable minimize/maximize buttons and resizing
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+        self.setSizeGripEnabled(True)
         self.resize(640, 420)
 
         self.customer_id = customer_id

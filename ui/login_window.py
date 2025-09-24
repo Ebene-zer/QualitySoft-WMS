@@ -25,6 +25,10 @@ class PasswordChangeDialog(QDialog):
         self.username = username
         self.setWindowTitle("Change Password")
         self.setModal(True)
+        # Enable minimize/maximize buttons and resizing
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+        self.setSizeGripEnabled(True)
         self.resize(350, 180)
         layout = QVBoxLayout()
         form = QFormLayout()

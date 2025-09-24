@@ -9,6 +9,10 @@ class NavigationHelpDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"How to Navigate {APP_NAME}")
         self.setMinimumWidth(520)
+        # Enable minimize/maximize buttons and resizing
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+        self.setSizeGripEnabled(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 12)
         layout.setSpacing(10)
@@ -39,6 +43,10 @@ class HelpDialog(QDialog):
         self.setWindowTitle("Help")
         self.setModal(True)
         self.setMinimumWidth(420)
+        # Enable minimize/maximize buttons and resizing
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+        self.setSizeGripEnabled(True)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 12)

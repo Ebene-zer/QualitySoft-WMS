@@ -3,7 +3,7 @@ from datetime import datetime
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
-from utils.branding import APP_NAME, APP_VERSION  # type: ignore[attr-defined]
+from utils.branding import APP_NAME, APP_VERSION
 
 
 class AboutDialog(QDialog):
@@ -12,6 +12,10 @@ class AboutDialog(QDialog):
         self.setWindowTitle(f"About {APP_NAME}")
         self.setModal(True)
         self.setMinimumWidth(420)
+        # Enable minimize/maximize buttons and resizing
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+        self.setSizeGripEnabled(True)
 
         year = datetime.now().year
 
