@@ -80,6 +80,16 @@ class AboutDialog(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok, parent=self)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+        # Hover style for OK button
+        try:
+            ok_btn = buttons.button(QDialogButtonBox.StandardButton.Ok)
+            if ok_btn is not None:
+                ok_btn.setStyleSheet(
+                    "QPushButton { background-color: #1976d2; color: white; padding: 8px 16px; border-radius: 6px; }"
+                    "QPushButton:hover { background-color: #1565c0; color: white; }"
+                )
+        except Exception:
+            pass
         layout.addWidget(buttons)
 
         self.setLayout(layout)
