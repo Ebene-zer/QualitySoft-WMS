@@ -141,6 +141,15 @@ class CustomerView(QWidget):
             padding: 6px;
             max-height: 200px;
         }
+        /* Make table header text bold black without background color */
+        QHeaderView::section {
+            font-weight: 700;
+            color: #000000;
+            padding: 6px 8px;
+        }
+        QTableCornerButton::section {
+            /* no custom background; keep default */
+        }
         """
 
     # Load added customers

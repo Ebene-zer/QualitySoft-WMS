@@ -5,9 +5,11 @@ from datetime import datetime
 
 from PyQt6.QtCore import (
     QEasingCurve,
+    QEvent,
     QParallelAnimationGroup,
     QPoint,
     QPropertyAnimation,
+    Qt,
     QTimer,
 )
 from PyQt6.QtGui import QFont
@@ -115,6 +117,9 @@ class MainWindow(QWidget):
 
         # Simple Products button (with optional low-stock count badge)
         self.btn_products = create_nav_button("Products", 1, 40, 11)
+        # Create badge overlay for Products button
+        self._ensure_products_badge()
+        self.btn_products.installEventFilter(self)
         create_nav_button("Customers", 2, 40, 11)
         create_nav_button("Invoice", 3, 40, 11)
         create_nav_button("Receipts", 4, 40, 11)
@@ -448,20 +453,89 @@ class MainWindow(QWidget):
             super().closeEvent(event)
 
     def update_products_badge(self, count: int | None):
-        """Update Products button text to include a low-stock count badge using default colors.
-        Example: "Products (3)" when count > 0, or just "Products" when 0/None.
+        """Update Products button with a dark-red badge showing the low-stock count.
+        Uses an overlay QLabel for reliable rendering across styles. Tooltip lists exact products and stock.
         """
         try:
             if not hasattr(self, "btn_products") or self.btn_products is None:
                 return
+            # Always keep base text plain
+            self.btn_products.setText("Products")
+            self._ensure_products_badge()
             if isinstance(count, int) and count > 0:
-                self.btn_products.setText(f"Products ({count})")
-                self.btn_products.setToolTip("Products with low stock present")
+                self._products_badge.setText(str(count))
+                self._products_badge.raise_()
+                self._products_badge.show()
+                self._position_products_badge()
+                # Build tooltip with exact products and their stock
+                try:
+                    from models.product import Product
+                    from utils.app_settings import get_low_stock_threshold
+
+                    threshold = get_low_stock_threshold()
+                    low_stock = Product.get_products_below_stock(threshold) or []
+                    if low_stock:
+                        # Limit extremely long tooltips by slicing, but show all if small
+                        items_html = "".join(
+                            f"<li>{p.name}: <b>{p.stock_quantity}</b> in stock</li>" for p in low_stock
+                        )
+                        tooltip = f"<b>Low stock products:</b><ul style='margin:4px 0 0 16px;'>{items_html}</ul>"
+                    else:
+                        tooltip = "Products with low stock present"
+                except Exception:
+                    tooltip = "Products with low stock present"
+                self.btn_products.setToolTip(tooltip)
             else:
-                self.btn_products.setText("Products")
+                self._products_badge.hide()
                 self.btn_products.setToolTip("Products")
         except Exception:
             pass
+
+    # Badge helpers
+    def _ensure_products_badge(self):
+        try:
+            if getattr(self, "_products_badge", None) is None and getattr(self, "btn_products", None) is not None:
+                from PyQt6.QtWidgets import QLabel
+
+                self._products_badge = QLabel(self.btn_products)
+                self._products_badge.setStyleSheet(
+                    """
+                    QLabel {
+                        background-color: #8B0000; /* dark red */
+                        color: #ffffff;
+                        border-radius: 10px;
+                        padding: 1px 6px;
+                        font-weight: 800;
+                    }
+                    """
+                )
+                self._products_badge.setVisible(False)
+                self._products_badge.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+                self._products_badge.raise_()
+        except Exception:
+            pass
+
+    def _position_products_badge(self):
+        try:
+            if getattr(self, "_products_badge", None) is None or getattr(self, "btn_products", None) is None:
+                return
+            badge = self._products_badge
+            btn = self.btn_products
+            # Ensure size hint is applied before positioning
+            badge.adjustSize()
+            x = max(0, btn.width() - badge.width() - 8)
+            y = max(0, (btn.height() - badge.height()) // 2)
+            badge.move(x, y)
+        except Exception:
+            pass
+
+    def eventFilter(self, obj, event):
+        try:
+            if obj is getattr(self, "btn_products", None) and event.type() == QEvent.Type.Resize:
+                self._position_products_badge()
+        except Exception:
+            pass
+        return super().eventFilter(obj, event)
 
     def _tick_title_marquee(self):
         """Rotate the tagline in the window title to create a marquee effect."""

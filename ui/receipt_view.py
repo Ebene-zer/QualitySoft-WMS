@@ -115,6 +115,12 @@ class ReceiptView(QWidget):
             padding: 6px;
             max-height: 220px;
         }
+        /* Make table header text bold black without background color */
+        QHeaderView::section {
+            font-weight: 700;
+            color: #000000;
+            padding: 6px 8px;
+        }
         """
 
     def load_invoices(self):

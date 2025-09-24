@@ -131,11 +131,28 @@ class LoginWindow(QWidget):
 
         self.toggle_password_btn = QPushButton()
         self.toggle_password_btn.setCheckable(True)
-        self.toggle_password_btn.setFixedWidth(30)
-        self.toggle_password_btn.setFixedHeight(30)
+        self.toggle_password_btn.setFixedWidth(40)
+        self.toggle_password_btn.setFixedHeight(40)
         self.toggle_password_btn.setToolTip("Show/Hide Password")
         self.toggle_password_btn.setIcon(QIcon("icons/closed_eye.png"))
         self.toggle_password_btn.setIconSize(QSize(24, 24))
+        # Improve visibility with a subtle, high-contrast background
+        self.toggle_password_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #f0f3f7; /* light neutral */
+                border: 1px solid #c0c6d0;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #e2e8f0;
+            }
+            QPushButton:checked {
+                background-color: #dbeafe; /* light blue when active */
+                border-color: #93c5fd;
+            }
+            """
+        )
         self.toggle_password_btn.clicked.connect(self.toggle_password_visibility)
 
         password_layout.addWidget(self.password_input)

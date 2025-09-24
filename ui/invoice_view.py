@@ -110,7 +110,6 @@ class InvoiceView(QWidget):
         discount_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.discount_input.setValidator(discount_validator)
         self.discount_input.textChanged.connect(self.handle_discount_input)
-        self.layout.addWidget(self.discount_input)
 
         self.tax_input = QLineEdit()
         self.tax_input.setPlaceholderText("Tax (GH¢)")
@@ -118,6 +117,9 @@ class InvoiceView(QWidget):
         tax_validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.tax_input.setValidator(tax_validator)
         self.tax_input.textChanged.connect(self.handle_tax_input)
+
+        # Revert: place Discount and Tax on separate rows
+        self.layout.addWidget(self.discount_input)
         self.layout.addWidget(self.tax_input)
 
         # Total Label
@@ -179,6 +181,12 @@ class InvoiceView(QWidget):
             border-radius: 6px;
             padding: 6px;
             max-height: 140px;
+        }
+        /* Make table header text bold black without background color */
+        QHeaderView::section {
+            font-weight: 700;
+            color: #000000;
+            padding: 6px 8px;
         }
         """
 
