@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 
 
 def _migration_1(cursor):
@@ -245,6 +245,14 @@ def _migration_8(cursor):
         logger.warning("Could not create index on invoices(invoice_date): %s", e)
 
 
+def _migration_9(cursor):
+    logger.info("Applying migration 9: ensure index on invoice_items(product_id)")
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_items_product_id ON invoice_items(product_id)")
+    except Exception as e:
+        logger.warning("Could not create index on invoice_items(product_id): %s", e)
+
+
 MIGRATIONS = {
     1: _migration_1,
     2: _migration_2,
@@ -254,6 +262,7 @@ MIGRATIONS = {
     6: _migration_6,
     7: _migration_7,
     8: _migration_8,
+    9: _migration_9,
 }
 
 # --- schema_version helpers --- #
