@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from datetime import datetime
 
@@ -10,6 +11,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMenu,
+    QMenuBar,
     QMessageBox,
     QPushButton,
     QStackedWidget,
@@ -18,13 +20,15 @@ from PyQt6.QtWidgets import (
     QWidgetAction,
 )
 
+from ui.about_dialog import AboutDialog
 from ui.customer_view import CustomerView
+from ui.help_dialog import HelpDialog
 from ui.invoice_view import InvoiceView
 from ui.more import MoreDropdown
 from ui.product_view import ProductView
 from ui.receipt_view import ReceiptView
 from ui.settings_dialog import SettingsDialog
-from ui.user_view import UserView
+from ui.users_dialog import UsersDialog
 from utils.backup import needs_backup, perform_backup
 from utils.branding import APP_NAME
 from utils.session import get_current_username, get_welcome_shown, set_welcome_shown
@@ -39,10 +43,37 @@ class MainWindow(QWidget):
         self.resize(1000, 700)
         self.setMinimumSize(600, 400)
 
+        # Scrolling tagline in title bar
+        try:
+            enable_marquee = ("pytest" not in sys.modules) and (os.environ.get("QT_QPA_PLATFORM") != "offscreen")
+            if enable_marquee:
+                self._title_base = APP_NAME
+                self._tagline = "Control Your Wholesale Flow."
+                self._marquee_pos = 0
+                self._marquee_timer = QTimer(self)
+                self._marquee_timer.timeout.connect(self._tick_title_marquee)
+                self._marquee_timer.start(500)  # update every 500 ms (slower)
+                self._tick_title_marquee()
+        except Exception:
+            pass
+
         # Set flat background color
         self.setStyleSheet("background-color: #f0f2f5;")
 
         main_layout = QVBoxLayout()
+
+        # Menu bar
+        menubar = QMenuBar(self)
+        # Add Settings to menu bar for Admin/CEO
+        if self.user_role.lower() in ["admin", "ceo"]:
+            settings_action = menubar.addAction("Settings")
+            settings_action.triggered.connect(self.open_settings_dialog)
+            # Add Users to menu bar, opens Users dialog window
+            users_action = menubar.addAction("Users")
+            users_action.triggered.connect(self.open_users_dialog)
+        help_action = menubar.addAction("Help")
+        help_action.triggered.connect(self.open_help_dialog)
+        main_layout.setMenuBar(menubar)
 
         # Top button bar layout
         button_bar_layout = QHBoxLayout()
@@ -79,10 +110,9 @@ class MainWindow(QWidget):
         create_nav_button("Invoice", 3, 40, 11)
         create_nav_button("Receipts", 4, 40, 11)
 
-        # Track the index for the Users tab
-        if self.user_role.lower() in ["admin", "ceo"]:
-            create_nav_button("Users", 5, 40, 11)
+        # Admin/CEO extra navigation buttons removed: Users and Settings are menu-only now
 
+        # Move Logout to the end so it's the last (rightmost) button
         btn_logout = QPushButton("Logout")
         btn_logout.setFixedHeight(40)
         btn_logout.setFont(QFont("Segue UI", 11, QFont.Weight.Medium))
@@ -100,18 +130,6 @@ class MainWindow(QWidget):
         btn_logout.clicked.connect(self.logout)
         button_bar_layout.addWidget(btn_logout)
 
-        # Only show Settings button for Admin and CEO
-        if self.user_role.lower() in ["admin", "ceo"]:
-            btn_settings = QPushButton("Settings")
-            btn_settings.setFixedHeight(40)
-            btn_settings.setFont(QFont("Segue UI", 11, QFont.Weight.Medium))
-            btn_settings.setStyleSheet(
-                "background-color: #3498db; color: white; border-radius: 6px; padding: 8px 14px;"
-            )
-            btn_settings.clicked.connect(self.open_settings_dialog)
-            button_bar_layout.addWidget(btn_settings)
-            self.nav_buttons.append(btn_settings)
-
         main_layout.addLayout(button_bar_layout)
 
         # Central stacked widget
@@ -119,7 +137,7 @@ class MainWindow(QWidget):
         # Add More tab first
         more_tab = QWidget()
         more_layout = QVBoxLayout()
-        self.more_dropdown_widget = MoreDropdown(on_option_selected=self.handle_more_dropdown, user_role=self.user_role)
+        self.more_dropdown_widget = MoreDropdown(user_role=self.user_role)
         more_layout.addWidget(self.more_dropdown_widget)
         more_tab.setLayout(more_layout)
         self.stacked_widget.addWidget(more_tab)
@@ -129,19 +147,19 @@ class MainWindow(QWidget):
         self.customer_view = CustomerView()
         self.invoice_view = InvoiceView()
         self.receipt_view = ReceiptView()
-        # Pass the logged-in user's role so UserView enforces permissions correctly
-        self.user_view = UserView(current_user_role=self.user_role)
+        # Users is dialog-only now; no user_view tab
+        # self.user_view = UserView(current_user_role=self.user_role)
         self.stacked_widget.addWidget(self.product_view)
         self.stacked_widget.addWidget(self.customer_view)
         self.stacked_widget.addWidget(self.invoice_view)
         self.stacked_widget.addWidget(self.receipt_view)
-        self.stacked_widget.addWidget(self.user_view)
+        # self.stacked_widget.addWidget(self.user_view)
         main_layout.addWidget(self.stacked_widget)
         self.setLayout(main_layout)
 
-        # Connect invoice_created signal to refresh a sales report if open
-        self.invoice_view.invoice_created.connect(self.refresh_more_features_dialog)
-        self.more_features_dialog = None
+        # Removed unused refresh_more_features_dialog wiring
+        # self.invoice_view.invoice_created.connect(self.refresh_more_features_dialog)
+        # self.more_features_dialog = None
 
         # Set the first button as active
         self.switch_view(3)
@@ -372,10 +390,6 @@ class MainWindow(QWidget):
             else:
                 btn.setStyleSheet(self.button_style(normal=True))
 
-    def handle_more_dropdown(self, index):
-        # No longer needed, as MoreDropdown handles everything internally
-        pass
-
     def logout(self):
         from ui.login_window import LoginWindow
 
@@ -387,13 +401,28 @@ class MainWindow(QWidget):
         dialog = SettingsDialog(self)
         dialog.exec()
 
-    def refresh_more_features_dialog(self):
-        # No longer needed
-        pass
+    def open_about_dialog(self):
+        dlg = AboutDialog(self)
+        dlg.exec()
+
+    def open_help_dialog(self):
+        dlg = HelpDialog(on_about_clicked=self.open_about_dialog, parent=self)
+        dlg.exec()
+
+    def open_users_dialog(self):
+        dlg = UsersDialog(current_user_role=self.user_role, parent=self)
+        dlg.exec()
 
     def closeEvent(self, event):
         """Perform an automatic backup if one is due before closing. Show UI warning if it fails."""
         try:
+            # Stop the marquee timer on close
+            try:
+                if hasattr(self, "_marquee_timer") and self._marquee_timer is not None:
+                    self._marquee_timer.stop()
+            except Exception:
+                pass
+
             if needs_backup(hours=24):
                 log = logging.getLogger(__name__)
                 log.info("Auto backup triggered on exit.")
@@ -422,6 +451,27 @@ class MainWindow(QWidget):
             else:
                 self.btn_products.setText("Products")
                 self.btn_products.setToolTip("Products")
+        except Exception:
+            pass
+
+    def _tick_title_marquee(self):
+        """Rotate the tagline in the window title to create a marquee effect."""
+        try:
+            base = getattr(self, "_title_base", APP_NAME) or APP_NAME
+            tagline = getattr(self, "_tagline", "")
+            if not tagline:
+                self.setWindowTitle(base)
+                return
+            gap = "    "
+            sequence = f"{tagline}{gap}"
+            if len(sequence) == 0:
+                self.setWindowTitle(base)
+                return
+            pos = getattr(self, "_marquee_pos", 0) or 0
+            pos = pos % len(sequence)
+            rotated = sequence[pos:] + sequence[:pos]
+            self.setWindowTitle(f"{base} — {rotated}")
+            self._marquee_pos = (pos + 1) % len(sequence)
         except Exception:
             pass
 

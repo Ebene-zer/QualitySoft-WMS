@@ -92,7 +92,7 @@ class CustomerHistoryDialog(QDialog):
             self.table.insertRow(r)
             self.table.setItem(r, 0, QTableWidgetItem(str(inv_id)))
             self.table.setItem(r, 1, QTableWidgetItem(inv_date))
-            self.table.setItem(r, 2, QTableWidgetItem(f"{total:.2f}"))
+            self.table.setItem(r, 2, QTableWidgetItem(f"GH¢ {total:,.2f}"))
         self.page_label.setText(f"Page {self._page} of {total_pages}")
         self.btn_prev.setEnabled(self._page > 1)
         self.btn_next.setEnabled(self._page < total_pages)
@@ -116,9 +116,9 @@ class CustomerHistoryDialog(QDialog):
         doc = SimpleDocTemplate(file_path, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
         styles = getSampleStyleSheet()
         elems = [Paragraph(f"Purchase History — {self.customer_name}", styles["Title"]), Spacer(1, 8)]
-        data = [["Invoice #", "Date", "Total"]]
+        data = [["Invoice #", "Date", "Total (GH¢)"]]
         for inv_id, inv_date, total in self._data:
-            data.append([str(inv_id), inv_date, f"{total:.2f}"])
+            data.append([str(inv_id), inv_date, f"GH¢ {total:,.2f}"])
         tbl = Table(data, hAlign="LEFT")
         tbl.setStyle(
             TableStyle(
