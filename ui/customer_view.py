@@ -28,24 +28,32 @@ class CustomerView(QWidget):
 
         self.layout = QVBoxLayout()
 
-        # Input fields
+        # Input fields in a single row
+        inputs_row = QHBoxLayout()
+        inputs_row.setSpacing(10)
+
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Customer Name")
-        self.layout.addWidget(self.name_input)
+        self.name_input.setMinimumWidth(240)
+        inputs_row.addWidget(self.name_input, 1)
 
         self.phone_input = QLineEdit()
         self.phone_input.setPlaceholderText("Phone Number")
         self.phone_input.setMaxLength(10)  # Limit to 10 digits
-        # Enforce digits-only and up to 10 digits (QIntValidator cannot represent all 10-digit ranges)
+        # Enforce digits-only and up to 10 digits
         self.phone_input.setValidator(QRegularExpressionValidator(QRegularExpression(r"^\d{0,10}$"), self))
-        self.layout.addWidget(self.phone_input)
+        self.phone_input.setFixedWidth(160)
+        inputs_row.addWidget(self.phone_input)
 
         self.address_input = QLineEdit()
         self.address_input.setPlaceholderText("Address")
-        self.layout.addWidget(self.address_input)
+        self.address_input.setMinimumWidth(260)
+        inputs_row.addWidget(self.address_input, 1)
 
         # Enter key support
         self.address_input.returnPressed.connect(self.add_customer)
+
+        self.layout.addLayout(inputs_row)
 
         # Add Customer Button and Search (same row)
         top_actions, self.search_input, self.search_timer, add_button = create_top_actions_row(
