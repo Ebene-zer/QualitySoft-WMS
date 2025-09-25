@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 from datetime import datetime
+from typing import Optional, Protocol, cast
 
 from PyQt6.QtCore import (
     QEasingCurve,
@@ -43,6 +44,13 @@ from ui.users_dialog import UsersDialog
 from utils.backup import needs_backup, perform_backup
 from utils.branding import APP_NAME
 from utils.session import get_current_username, get_welcome_shown, set_welcome_shown
+
+
+# Protocol to describe optional animation attributes we attach dynamically.
+class _HasAnimAttrs(Protocol):  # pragma: no cover - typing aid only
+    _fade_effect: Optional[QGraphicsOpacityEffect]
+    _show_group: Optional[QParallelAnimationGroup]
+    _hide_group: Optional[QParallelAnimationGroup]
 
 
 class MainWindow(QWidget):
@@ -300,12 +308,13 @@ class MainWindow(QWidget):
         try:
             if widget is None:
                 return
-            # Opacity effect
-            effect = getattr(widget, "_fade_effect", None)
+            # Opacity effect (cast for typing; attributes added dynamically)
+            w = cast(_HasAnimAttrs, widget)
+            effect = getattr(w, "_fade_effect", None)
             if effect is None:
                 effect = QGraphicsOpacityEffect(widget)
                 widget.setGraphicsEffect(effect)
-                widget._fade_effect = effect
+                setattr(w, "_fade_effect", effect)
             effect.setOpacity(0.0)
 
             # Opacity animation 0 -> 1
@@ -327,7 +336,7 @@ class MainWindow(QWidget):
             group.addAnimation(pos_anim)
 
             # Keep a ref to prevent GC and start
-            widget._show_group = group
+            setattr(w, "_show_group", group)
             group.start()
         except Exception:
             pass
@@ -337,12 +346,13 @@ class MainWindow(QWidget):
         try:
             if widget is None:
                 return
-            # Opacity effect
-            effect = getattr(widget, "_fade_effect", None)
+            # Opacity effect (cast for typing; attributes added dynamically)
+            w = cast(_HasAnimAttrs, widget)
+            effect = getattr(w, "_fade_effect", None)
             if effect is None:
                 effect = QGraphicsOpacityEffect(widget)
                 widget.setGraphicsEffect(effect)
-                widget._fade_effect = effect
+                setattr(w, "_fade_effect", effect)
             effect.setOpacity(1.0)
 
             # Opacity animation 1 -> 0
@@ -375,7 +385,7 @@ class MainWindow(QWidget):
 
             group.finished.connect(_on_finished)
             # Keep a ref to prevent GC and start
-            widget._hide_group = group
+            setattr(w, "_hide_group", group)
             group.start()
         except Exception:
             try:
