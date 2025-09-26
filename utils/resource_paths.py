@@ -15,9 +15,17 @@ def asset_path(name: str) -> str:
     Example:
         icon = QIcon(asset_path("tradia.ico"))
     """
-    return str(_ASSETS_DIR / name)
+    # Primary: packaged assets directory (root/assets or PyInstaller bundle)
+    p = _ASSETS_DIR / name
+    if p.exists():
+        return str(p)
+    # Fallback: current working directory's assets (portable zip scenarios)
+    alt = Path.cwd() / "assets" / name
+    if alt.exists():
+        return str(alt)
+    # Last resort: return the primary path even if missing (caller may handle)
+    return str(p)
 
 
 def base_dir() -> Path:  # pragma: no cover - trivial
     return _BASE_DIR
-
