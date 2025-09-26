@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -45,38 +46,64 @@ class InvoiceView(QWidget):
         self.customer_dropdown.setEditable(True)
         self.customer_completer = QCompleter()
         self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        # Set once; no need to reset on every reload
         self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.customer_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.customer_dropdown.setCompleter(self.customer_completer)
         self.customer_dropdown.lineEdit().installEventFilter(focus_filter)
         self.customer_dropdown.currentIndexChanged.connect(self._select_all_customer)
-        self.layout.addWidget(QLabel("Select Customer:"))
-        self.layout.addWidget(self.customer_dropdown)
 
         # Product Dropdown
         self.product_dropdown = QComboBox()
         self.product_dropdown.setEditable(True)
         self.product_completer = QCompleter()
         self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        # Set once; no need to reset on every reload
         self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.product_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.product_dropdown.setCompleter(self.product_completer)
         self.product_dropdown.lineEdit().installEventFilter(focus_filter)
         self.product_dropdown.currentIndexChanged.connect(self._select_all_product)
-        self.layout.addWidget(QLabel("Select Product:"))
-        self.layout.addWidget(self.product_dropdown)
+        # Equal halves: let it expand within its half
+        self.product_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        # Optional: avoid over-expanding
+        # self.product_dropdown.setMaximumWidth(600)
 
         # Quantity Input
         self.quantity_input = QLineEdit()
         self.quantity_input.setPlaceholderText("Quantity")
         # Only positive integers for quantity
         self.quantity_input.setValidator(QIntValidator(1, 1_000_000_000, self))
-        self.layout.addWidget(self.quantity_input)
-
+        # Equal halves: let it expand within its half
+        self.quantity_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         # Enter key support
         self.quantity_input.returnPressed.connect(self.add_item_to_invoice)
+
+        # --- Layout: Row 1 (Customer), Row 2 (Product | Quantity) ---
+        # Row 1: Customer label + dropdown (stacked vertically)
+        row1 = QVBoxLayout()
+        row1.addWidget(QLabel("Select Customer:"))
+        row1.addWidget(self.customer_dropdown)
+        self.layout.addLayout(row1)
+
+        # Row 2: Left = Product (label + dropdown), Right = Quantity input
+        row2 = QHBoxLayout()
+        row2.setSpacing(16)  # base spacing
+        left_col = QVBoxLayout()
+        prod_label = QLabel("Select Product:")
+        left_col.addWidget(prod_label)
+        left_col.addWidget(self.product_dropdown)
+        right_col = QVBoxLayout()
+        # Add vertical spacing equal to the product label height so the quantity
+        # field aligns horizontally with the product dropdown
+        try:
+            right_col.addSpacing(prod_label.sizeHint().height() + 6)
+        except Exception:
+            right_col.addSpacing(20)
+        right_col.addWidget(self.quantity_input)
+        # Equal halves: no asymmetric margins and equal stretch
+        right_col.setContentsMargins(0, 0, 0, 0)
+        row2.addLayout(left_col, 1)
+        row2.addLayout(right_col, 1)
+        self.layout.addLayout(row2)
 
         # Add Item, Update, and Delete Buttons
         button_layout = QHBoxLayout()
@@ -97,7 +124,6 @@ class InvoiceView(QWidget):
         self.invoice_items_table.setHorizontalHeaderLabels(["Product", "Quantity", "Unit Price (GH¢)", "Total (GH¢)"])
         self.invoice_items_table.setSelectionBehavior(self.invoice_items_table.SelectionBehavior.SelectRows)
         self.invoice_items_table.setEditTriggers(self.invoice_items_table.EditTrigger.NoEditTriggers)
-        # Set header resize behavior once to avoid repeated auto-resizes
         self.invoice_items_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.invoice_items_table.itemSelectionChanged.connect(self.populate_fields_from_selection)
         self.layout.addWidget(self.invoice_items_table)
@@ -181,6 +207,13 @@ class InvoiceView(QWidget):
             border-radius: 6px;
             padding: 6px;
             max-height: 140px;
+        }
+        QTableWidget {
+            background-color: white; /* match ReceiptView */
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 6px;
+            max-height: 220px; /* slightly constrained like ReceiptView */
         }
         /* Make table header text bold black without background color */
         QHeaderView::section {
