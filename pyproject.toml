@@ -21,8 +21,8 @@ dependencies = [
   "pandas==2.2.3",
   "openpyxl==3.1.5",
   "fpdf==1.7.2",
-  "reportlab",
-  "matplotlib",
+  "reportlab==4.2.5",
+  "matplotlib==3.9.2",
   "python-dateutil==2.9.0.post0"
 ]
 
@@ -82,6 +82,13 @@ skip_covered = true
 [tool.setuptools]
 # Explicitly list packages to avoid "Multiple top-level packages discovered" error during editable install.
 packages = ["database", "models", "ui", "utils"]
+# Ensure top-level main.py is included so the console script works when installed from wheel or sdist.
+py-modules = ["main"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["icons/*", "docs/*", "tests/*", "*.db"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:.*ast\\.NameConstant.*:DeprecationWarning:reportlab\\.lib\\.rl_safe_eval"
+]
