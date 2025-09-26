@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 from models.user import User
 from ui.main_window import MainWindow
 from utils.branding import APP_NAME
+from utils.resource_paths import asset_path
 from utils.session import set_current_user
 
 
@@ -52,8 +53,8 @@ class PasswordChangeDialog(QDialog):
     def _on_save(self):
         pwd = self.new_pwd.text().strip()
         confirm = self.confirm_pwd.text().strip()
-        if len(pwd) < 8:
-            QMessageBox.warning(self, "Weak Password", "Password must be at least 8 characters long.")
+        if len(pwd) < 6:
+            QMessageBox.warning(self, "Weak Password", "Password must be at least 6 characters long.")
             return
         if pwd != confirm:
             QMessageBox.warning(self, "Mismatch", "Passwords do not match.")
@@ -134,7 +135,7 @@ class LoginWindow(QWidget):
         self.toggle_password_btn.setFixedWidth(40)
         self.toggle_password_btn.setFixedHeight(40)
         self.toggle_password_btn.setToolTip("Show/Hide Password")
-        self.toggle_password_btn.setIcon(QIcon("icons/closed_eye.png"))
+        self.toggle_password_btn.setIcon(QIcon(asset_path("closed_eye.png")))
         self.toggle_password_btn.setIconSize(QSize(24, 24))
         # Improve visibility with a subtle, high-contrast background
         self.toggle_password_btn.setStyleSheet(
@@ -175,6 +176,28 @@ class LoginWindow(QWidget):
             QMessageBox.warning(self, "Missing Info", "Please Enter username and password.")
             return
 
+        # Check soft lock before attempting authentication (mock-safe)
+        try:
+            is_locked_fn = getattr(User, "is_locked", None)
+            locked = bool(is_locked_fn(username)) if callable(is_locked_fn) else False
+            # Only trust real bool results; MagicMock is not bool instance
+            if callable(is_locked_fn):
+                res = is_locked_fn(username)
+                locked = res is True if isinstance(res, bool) else False
+            if locked:
+                rem_fn = getattr(User, "lock_remaining", None)
+                remaining = rem_fn(username) if callable(rem_fn) else 0
+                if not isinstance(remaining, int):
+                    remaining = 0
+                QMessageBox.warning(
+                    self,
+                    "Temporarily Locked",
+                    f"Too many failed attempts. Please wait {max(remaining, 1)} seconds and try again.",
+                )
+                return
+        except Exception:
+            pass
+
         try:
             role = User.authenticate(username, password)
             if role:
@@ -190,7 +213,6 @@ class LoginWindow(QWidget):
                             QMessageBox.information(self, "Cancelled", "Password change required before access.")
                             return
                 except Exception:
-                    # If the column/method not available, proceed (legacy DB) – fail open only for backward compat.
                     pass
 
                 self.main_window = MainWindow(username, role)
@@ -198,16 +220,31 @@ class LoginWindow(QWidget):
                 self.main_window.show()
                 self.close()
             else:
+                # If now locked, inform user; else generic message
+                try:
+                    rem_fn = getattr(User, "lock_remaining", None)
+                    remaining = rem_fn(username) if callable(rem_fn) else 0
+                    if isinstance(remaining, int) and remaining > 0:
+                        QMessageBox.warning(
+                            self,
+                            "Temporarily Locked",
+                            f"Too many failed attempts. Please wait {remaining} seconds and try again.",
+                        )
+                        return
+                except Exception:
+                    pass
                 QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
         except Exception as e:
             QMessageBox.critical(
-                self, "Error", f"An error occurred during login: {e} \n" f"Contact Developer if problem persist."
+                self,
+                "Error",
+                f"An error occurred during login: {e}\nContact the developer if the problem persists.",
             )
 
     def toggle_password_visibility(self):
         if self.toggle_password_btn.isChecked():
             self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.toggle_password_btn.setIcon(QIcon("icons/open_eye.png"))
+            self.toggle_password_btn.setIcon(QIcon(asset_path("open_eye.png")))
         else:
             self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.toggle_password_btn.setIcon(QIcon("icons/closed_eye.png"))
+            self.toggle_password_btn.setIcon(QIcon(asset_path("closed_eye.png")))
