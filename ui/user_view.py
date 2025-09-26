@@ -175,6 +175,7 @@ class UserView(QWidget):
     def update_user(self):
         selected_item = self.user_list.currentItem()
         if not selected_item:
+            QMessageBox.warning(self, "Select User", "Please select a user to update.")
             return
         username = selected_item.text().split(" (")[0]
         # Prevent editing Admin details unless the current user is Admin
