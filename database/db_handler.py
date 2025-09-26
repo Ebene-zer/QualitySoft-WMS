@@ -1,6 +1,7 @@
 import logging
 import os
 import sqlite3
+from pathlib import Path
 
 from . import migrations
 
@@ -10,9 +11,31 @@ DEFAULT_DB_FILENAME = "wholesale.db"
 logger = logging.getLogger(__name__)
 
 
+def _default_db_path() -> str:
+    """Return a user-writable default database path.
+
+    Priority:
+      1. Respect TRADIA_DATA_DIR if set (for portability/testing)
+      2. Documents/tradia/data/wholesale.db
+    """
+    base = os.getenv("TRADIA_DATA_DIR")
+    if base:
+        base_path = Path(base).expanduser().resolve()
+    else:
+        base_path = Path.home() / "Documents" / "tradia" / "data"
+    try:
+        base_path.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # As a last resort, fall back to current working directory
+        return DEFAULT_DB_FILENAME
+    return str(base_path / DEFAULT_DB_FILENAME)
+
+
 def get_db_connection(db_name=None):
-    if db_name is None:
-        db_name = os.environ.get(DB_ENV_KEY, DEFAULT_DB_FILENAME)
+    if not db_name:
+        # Environment override takes precedence
+        env_db = os.environ.get(DB_ENV_KEY)
+        db_name = env_db if env_db else _default_db_path()
     conn = sqlite3.connect(db_name, timeout=10)
     try:
         conn.execute("PRAGMA foreign_keys = ON")
