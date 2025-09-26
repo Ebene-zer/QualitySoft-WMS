@@ -15,7 +15,8 @@ from utils.backup import (
 
 def test_schema_version_upgraded(db):  # db fixture auto use sets up isolated DB
     initialize_database()
-    assert get_schema_version() >= 3
+    # Squashed baseline migration now sets version to 1 (previous tests expected >=3 before squashing)
+    assert get_schema_version() >= 1
 
 
 def test_backup_creation_and_retention(db):
