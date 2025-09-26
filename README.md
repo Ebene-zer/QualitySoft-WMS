@@ -45,7 +45,7 @@ An easy-to-use Wholesale Management System (WMS) for Windows desktops (FREE / op
 6. Begin adding Products, then Customers, then create Invoices.
 
 ### Portable vs Installed
-- Portable: Delete the folder to remove (retain `wholesale.db` if you want your data).
+- Portable: Delete the folder to remove (retain your data in `Documents/tradia/data/wholesale.db` unless you overrode the location).
 - Installed: Use Windows “Add or Remove Programs”.
 
 ---
@@ -64,7 +64,7 @@ An easy-to-use Wholesale Management System (WMS) for Windows desktops (FREE / op
 - Default location (if none set): `Documents/tradia/backups`
 - Filenames: `backup_YYYYmmdd_HHMMSS.db`
 - Retention: Only the most recent N backups (configurable) are kept. Lowering the retention value prunes older backups next time a new backup is created.
-- Restore: Close app → (Optional: copy current `wholesale.db`) → Replace it with selected backup → Reopen.
+- Restore: Close app → (Optional: copy current DB) → Replace it with selected backup → Reopen.
 - Keep periodic off‑machine backups (USB / cloud sync) for disaster recovery.
 
 > Backups are plain SQLite database copies (not encrypted). Secure the directory if data is sensitive.
@@ -95,10 +95,11 @@ An easy-to-use Wholesale Management System (WMS) for Windows desktops (FREE / op
 ## Updating the Application
 1. Make a Manual Backup first.
 2. Replace old executable/folder or run new installer.
-3. Existing `wholesale.db` auto-migrates if schema changes occur (see Migrations).
+3. Existing database auto-migrates if schema changes occur (see Migrations).
 
 ### Database File Location
-- Main data file: `wholesale.db` (alongside executable unless `WMS_DB_NAME` overrides).
+- Default main data file: `Documents/tradia/data/wholesale.db` (auto-created).  
+  Override with env `WMS_DB_NAME` (full path) or set `TRADIA_DATA_DIR` to move the folder.
 - Backups: user-configured directory.
 
 ---
@@ -157,22 +158,22 @@ mypy .
 - License / activation tables were intentionally removed in this free edition.
 - Add future forward-only migrations by: (1) creating a new `_migration_N`, (2) bumping `CURRENT_SCHEMA_VERSION`, (3) implementing idempotent changes.
 
-### Packaging (PyInstaller example)
+### Packaging (PyInstaller)
+Recommended: use the provided spec for reproducible builds.
 ```
-pyinstaller --noconfirm --noconsole --name tradia \
-  --add-data "assets;assets" --icon assets/tradia.ico main.py
+pyinstaller tradia.spec
 ```
-Add code signing for production distribution (recommended).
+This bundles the assets folder and handles common hidden imports.
 
 ### Environment Variables
 - WMS_DB_NAME – override DB path (testing / multi-instance)
+- TRADIA_DATA_DIR – change the default data directory (where wholesale.db lives)
 - SKIP_GUI_TESTS=1 – skip GUI test execution in CI/headless environments
 - TRADIA_RELAXED_PASSWORD_POLICY=1 – relax password policy and throttling in test/demo environments
 
 ---
 ## Changelog (Summary)
-- 1.0.0: Initial public free release (baseline schema v1, activity log added, removed legacy trial/licensing code, consolidated settings, backup retention, forced admin password change).
-- 1.0.0-security: Password policy (min 6, letter+digit), throttle and soft lock on repeated login failures, failed login auditing, PBKDF2 format with iterations and auto‑migration of legacy hashes; High‑DPI, logging to rotating file, packaged asset paths.
+- 1.0.0: Initial public free release (baseline schema v1, activity log added, removed legacy trial/licensing code, consolidated settings, backup retention, forced admin password change). Updated default DB path to user Documents and added PyInstaller spec.
 
 ## Roadmap (Selected)
 - Permission matrix refinements (granular per-action control)
