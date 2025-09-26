@@ -1,10 +1,10 @@
+"""Application entry point (FREE edition) - initializes DB, ensures default admin, shows login."""
 import logging
-import secrets
 import sys
-import uuid
-from datetime import datetime
+from typing import Any
 
-from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QGuiApplication, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -19,79 +19,24 @@ from PyQt6.QtWidgets import (
 from database.db_handler import initialize_database
 from models.user import User
 from ui.login_window import LoginWindow
-from utils.license_manager import (
-    check_product_pin,
-    is_trial_expired,
-    set_license_field,
-)
+from utils.logging_setup import configure_logging, install_global_excepthook
+from utils.resource_paths import asset_path
 
-# Application version constant (optional)
 __version__ = "1.0.0"
 
 
-def _configure_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
-    logging.getLogger("sqlite3").setLevel(logging.WARNING)
-
-
-class PinDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Product Pin Required")
-        self.setFixedSize(350, 200)
-        layout = QVBoxLayout()
-        self.license_code = str(uuid.uuid4())
-        layout.addWidget(QLabel("Trial expired. Enter Product Pin to continue:"))
-        self.code_label = QLabel(f"License Request Code: {self.license_code}")
-        layout.addWidget(self.code_label)
-        self.copy_btn = QPushButton("Copy Code")
-        self.copy_btn.clicked.connect(self.copy_code)
-        layout.addWidget(self.copy_btn)
-        self.pin_input = QLineEdit()
-        self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.pin_input)
-        self.submit_btn = QPushButton("Submit")
-        self.submit_btn.clicked.connect(self.check_pin)
-        layout.addWidget(self.submit_btn)
-        self.setLayout(layout)
-        self.pin_valid = False
-
-    def get_license_code(self):
-        return self.license_code
-
-    def copy_code(self):
-        QGuiApplication.clipboard().setText(self.license_code)
-        QMessageBox.information(self, "Copied", "License Request Code copied to clipboard.")
-
-    def check_pin(self):
-        try:
-            pin = self.pin_input.text().strip()
-            if check_product_pin(pin):
-                # Reset trial period after valid pin entry
-                set_license_field("trial_days", 14)
-                # Store trial_start in Day/Month/Year format
-                set_license_field("trial_start", datetime.now().strftime("%d/%m/%Y"))
-                self.pin_valid = True
-                self.accept()
-            else:
-                QMessageBox.warning(self, "Invalid Pin", "The Product Pin is incorrect.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred during pin validation: {e}")
-
-
-class InitialAdminSetupDialog(QDialog):
-    """Dialog shown when the initial admin account is created; allows copying the temp password."""
+class AdminSetupDialog(QDialog):
+    """Popup shown once when the default admin account is auto-created.
+    Allows copying the temporary password and informs user to change it after log in.
+    """
 
     def __init__(self, username: str, temp_password: str, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Initial Admin Setup")
         self.setModal(True)
         self.temp_password = temp_password
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("An admin account was created."))
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("An administrator account has been created."))
         layout.addWidget(QLabel(f"Username: {username}"))
         layout.addWidget(QLabel("Temporary Password (copy & store securely):"))
         self.pass_field = QLineEdit(temp_password)
@@ -99,16 +44,14 @@ class InitialAdminSetupDialog(QDialog):
         self.pass_field.setCursorPosition(0)
         layout.addWidget(self.pass_field)
         btn_row = QHBoxLayout()
-        self.copy_btn = QPushButton("Copy Password")
-        self.close_btn = QPushButton("Close")
-        self.copy_btn.clicked.connect(self.copy_password)
-        self.close_btn.clicked.connect(self.accept)
-        btn_row.addWidget(self.copy_btn)
-        btn_row.addWidget(self.close_btn)
+        copy_btn = QPushButton("Copy Password")
+        close_btn = QPushButton("Close")
+        copy_btn.clicked.connect(self.copy_password)
+        close_btn.clicked.connect(self.accept)
+        btn_row.addWidget(copy_btn)
+        btn_row.addWidget(close_btn)
         layout.addLayout(btn_row)
-        layout.addWidget(QLabel("You must set a new password now (you will be prompted)."))
-        self.setLayout(layout)
-        # Auto-select for quick Ctrl+C
+        layout.addWidget(QLabel("You must set a new password after first login."))
         self.pass_field.selectAll()
 
     def copy_password(self):
@@ -116,25 +59,70 @@ class InitialAdminSetupDialog(QDialog):
         QMessageBox.information(self, "Copied", "Temporary password copied to clipboard.")
 
 
-def main() -> int:
-    """Application entry point used by console script 'tradia'.
+_APP_ICON: QIcon | None = None  # cached after load
 
-    Returns an exit status code.
-    """
-    _configure_logging()
-    app = QApplication.instance() or QApplication(sys.argv)
+
+def _set_app_icon(app: QApplication):
+    """Set a global window icon (single canonical file: tradia.ico)."""
+    global _APP_ICON
+    if _APP_ICON is not None:
+        app.setWindowIcon(_APP_ICON)
+        return
+    icon_file = asset_path("tradia.ico")
+    _APP_ICON = QIcon(icon_file)
+    if not _APP_ICON.isNull():
+        app.setWindowIcon(_APP_ICON)
+        logging.info("Application icon set from tradia.ico")
+    else:
+        logging.warning("Failed loading tradia.ico icon.")
+    if sys.platform.startswith("win"):
+        try:
+            import ctypes
+            app_id = "Tradia.App"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+            logging.info("Set Windows AppUserModelID to %s", app_id)
+        except Exception as e:
+            logging.debug("Could not set Windows AppUserModelID: %s", e)
+
+
+def main() -> int:
+    configure_logging()
+    install_global_excepthook()
+    # Enable High-DPI scaling before QApplication instance
+    try:
+        aa_scale: Any = getattr(Qt.ApplicationAttribute, "AA_EnableHighDpiScaling", None)
+        if aa_scale is not None:
+            QApplication.setAttribute(aa_scale, True)
+        aa_pix: Any = getattr(Qt.ApplicationAttribute, "AA_UseHighDpiPixmaps", None)
+        if aa_pix is not None:
+            QApplication.setAttribute(aa_pix, True)
+        QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+    except Exception:
+        pass
+    app_inst = QApplication.instance()
+    app: QApplication
+    if isinstance(app_inst, QApplication):
+        app = app_inst
+    else:
+        app = QApplication(sys.argv)
+    _set_app_icon(app)
     initialize_database()
-    if not User.user_exists("admin"):
-        temp_pass = secrets.token_urlsafe(10)
-        User.add_user("admin", temp_pass, "Admin", must_change_password=True)
-        # Replace simple message box with copy-capable dialog
-        dlg = InitialAdminSetupDialog("admin", temp_pass)
-        dlg.exec()
-    if is_trial_expired():
-        pin_dialog = PinDialog()
-        if pin_dialog.exec() != QDialog.DialogCode.Accepted:
-            return 0
+    # Create default admin if missing and show popup (skip during tests)
+    temp_pass = User.ensure_default_admin("admin")
+    if temp_pass and "pytest" not in sys.modules:
+        try:
+            dlg = AdminSetupDialog("admin", temp_pass)
+            if _APP_ICON:
+                dlg.setWindowIcon(_APP_ICON)
+            dlg.exec()
+        except Exception as e:
+            logging.warning("Failed showing admin setup dialog: %s", e)
+    # Directly show login (activation/trial removed)
     login = LoginWindow()
+    if _APP_ICON:
+        login.setWindowIcon(_APP_ICON)
     login.show()
     return app.exec()
 
