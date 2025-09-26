@@ -58,6 +58,11 @@ wholesale.db
 *.db
 *.sqlite
 *.sqlite3
+# SQLite WAL/journal sidecar files
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
 # If you need a small fixture DB, prefer generating it in tests instead of committing.
 # Otherwise whitelist a specific one, e.g. uncomment below:
 # !tests/fixtures/fixture_wholesale.db
@@ -69,9 +74,22 @@ wholesale.db
 secret*
 config/*secrets*.json
 
+# --- Test/coverage reports ---
+coverage.xml
+junit*.xml
+
+# --- Linter caches ---
+.ruff_cache/
+
+# --- Packaging leftovers ---
+pip-wheel-metadata/
+# Inno Setup output dir (created by installer build)
+output/
+
 # --- OS / misc ---
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # --- Binary / serialized data (decide case-by-case) ---
 *.pkl
