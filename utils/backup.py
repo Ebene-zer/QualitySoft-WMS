@@ -13,6 +13,7 @@ import datetime as _dt
 import logging
 import os
 import sqlite3
+from pathlib import Path
 
 from database.db_handler import get_db_connection
 from utils.branding import APP_SLUG
@@ -107,9 +108,34 @@ def update_retention_count(new_count: int):
 
 
 def _get_database_path() -> str:
+    """Return the actual on-disk path of the main SQLite database.
+
+    Primary: ask SQLite for the attached main DB path via PRAGMA database_list
+    using the same connection logic as the app. This guarantees consistency with
+    env overrides and default path computation.
+
+    Fallbacks mirror db_handler defaults: respect WMS_DB_NAME, else
+    Documents/tradia/data/wholesale.db (or TRADIA_DATA_DIR if set).
+    """
+    try:
+        conn = get_db_connection()
+        try:
+            row = conn.execute("PRAGMA database_list").fetchone()
+            if row and len(row) >= 3 and row[2]:
+                return row[2]
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    # Fallbacks
     from database.db_handler import DB_ENV_KEY, DEFAULT_DB_FILENAME
 
-    return os.environ.get(DB_ENV_KEY, DEFAULT_DB_FILENAME)
+    env_path = os.environ.get(DB_ENV_KEY)
+    if env_path:
+        return env_path
+    base = os.getenv("TRADIA_DATA_DIR")
+    base_path = Path(base).expanduser().resolve() if base else (Path.home() / "Documents" / APP_SLUG / "data")
+    return str(base_path / DEFAULT_DB_FILENAME)
 
 
 def list_backups(directory: str | None = None) -> list[str]:
