@@ -8,11 +8,9 @@
 #define MyAppPublisher "Ebenezer Fuachie"
 #define MyAppURL ""
 #define MyAppExeName "tradia.exe"
-// Use GUID without braces to avoid constant parsing; wrap at usage site instead
-#define MyAppId "6CFBE7E7-7B8E-4B0F-9B77-32F9C6F4D6A1"
 
 [Setup]
-AppId={{#MyAppId}}
+AppId={{6CFBE7E7-7B8E-4B0F-9B77-32F9C6F4D6A1}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
