@@ -5,6 +5,7 @@ import secrets
 import sqlite3
 import sys
 import time
+import string
 
 from database.db_handler import get_db_connection
 from utils.activity_log import log_action
@@ -33,6 +34,24 @@ class User:
     @staticmethod
     def _relaxed_mode() -> bool:
         return os.environ.get("TRADIA_RELAXED_PASSWORD_POLICY") == "1" or "pytest" in sys.modules
+
+    @staticmethod
+    def generate_temp_password(length: int = 12) -> str:
+        """Generate a random password that satisfies policy (letter + digit).
+
+        Uses URL-safe characters without punctuation that might confuse users, but
+        guarantees at least one letter and one digit.
+        """
+        if length < max(MIN_PASSWORD_LENGTH, 8):  # keep reasonable minimum
+            length = max(MIN_PASSWORD_LENGTH, 8)
+        letters = string.ascii_letters
+        digits = string.digits
+        alphabet = letters + digits
+        # Ensure criteria
+        pw_chars = [secrets.choice(letters), secrets.choice(digits)]
+        pw_chars += [secrets.choice(alphabet) for _ in range(length - 2)]
+        secrets.SystemRandom().shuffle(pw_chars)
+        return "".join(pw_chars)
 
     # ---------------- Password Hashing ---------------- #
     @staticmethod
@@ -140,6 +159,7 @@ class User:
         if cache and cache["count"] >= FAILED_THRESHOLD and (now - cache["last_ts"]) < LOCKOUT_SECONDS:
             log_action(username, "LOGIN_FAIL", "locked")
             return None
+        connection = None
         try:
             connection = get_db_connection()
             cursor = connection.cursor()
@@ -164,7 +184,7 @@ class User:
                     try:
                         new_hash = User.hash_password(password)
                         cursor.execute(
-                            "UPDATE users SET password_hash=? WHERE username=?", (new_hash, username)
+                            "UPDATE users SET password_hash=? WHERE username= ?", (new_hash, username)
                         )
                         connection.commit()
                         log_action(username, "PASS_HASH_UPGRADE", "migrated legacy hash")
@@ -189,7 +209,8 @@ class User:
         except Exception as e:
             logging.error("Authentication error for user '%s': %s", username, e)
             try:
-                connection.close()
+                if connection is not None:
+                    connection.close()
             except Exception:
                 pass
             return None
@@ -325,7 +346,8 @@ class User:
         if exists:
             logger.info("Default admin '%s' already present", username)
             return None
-        temp_password = secrets.token_urlsafe(10)  # ~13-14 chars, URL-safe
+        # Generate a policy-compliant temporary password
+        temp_password = User.generate_temp_password(12)
         try:
             User.add_user(username, temp_password, "Admin", must_change_password=True)
             logger.info("Created default admin '%s' (must change password on first login)", username)
@@ -334,3 +356,9 @@ class User:
             # Race condition / created in between check and insert; treat as existing
             logger.warning("Race creating default admin '%s'; treating as existing", username)
             return None
+        except ValueError:
+            # Extremely unlikely since generate_temp_password satisfies policy; retry once
+            temp_password = User.generate_temp_password(14)
+            User.add_user(username, temp_password, "Admin", must_change_password=True)
+            logger.info("Created default admin '%s' after retry", username)
+            return temp_password
