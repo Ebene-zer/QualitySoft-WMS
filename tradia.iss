@@ -2,7 +2,7 @@
 ; Creates Start Menu and Desktop shortcuts
 
 #define MyAppName "Tradia"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion GetStringDef("MyAppVersion", "1.0.0")
 #define MyAppPublisher "Ebenezer Fuachie"
 #define MyAppURL ""
 #define MyAppExeName "tradia.exe"

@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    name: Build PyInstaller EXE and Inno Setup installer
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+      PYTHONUNBUFFERED: 1
+      QT_QPA_PLATFORM: offscreen
+      MPLBACKEND: Agg
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          pip install pyinstaller
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Build with PyInstaller
+        run: pyinstaller tradia.spec
+
+      - name: Read version from pyproject
+        id: version
+        shell: pwsh
+        run: |
+          $v = python - << 'PY'
+          import tomllib
+          print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+          PY
+          echo "value=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Set up Inno Setup
+        uses: crazy-max/ghaction-inno-setup@v3
+
+      - name: Build installer (Inno Setup)
+        run: iscc /DMyAppVersion=${{ steps.version.outputs.value }} tradia.iss
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $zip = "Tradia-portable-${{ steps.version.outputs.value }}.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path dist/tradia/* -DestinationPath $zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tradia-${{ steps.version.outputs.value }}-artifacts
+          path: |
+            dist/tradia/**
+            output/*.exe
+            Tradia-portable-${{ steps.version.outputs.value }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Tradia v${{ steps.version.outputs.value }}
+          files: |
+            output/*.exe
+            Tradia-portable-${{ steps.version.outputs.value }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
