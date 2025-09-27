@@ -3,9 +3,9 @@ import logging
 import os
 import secrets
 import sqlite3
+import string
 import sys
 import time
-import string
 
 from database.db_handler import get_db_connection
 from utils.activity_log import log_action
