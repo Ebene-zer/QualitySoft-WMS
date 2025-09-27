@@ -13,7 +13,7 @@ if os.environ.get("QT_QPA_PLATFORM") == "offscreen" or "pytest" in sys.modules:
 import datetime
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from PyQt6.QtCore import QPoint, Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,

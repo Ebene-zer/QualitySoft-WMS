@@ -10,6 +10,7 @@ hiddenimports = []
 # Optional: include any dynamic submodules PyInstaller might miss
 hiddenimports += collect_submodules('matplotlib')
 hiddenimports += collect_submodules('pandas')
+hiddenimports += collect_submodules('reportlab')
 
 
 a = Analysis(
@@ -49,4 +50,3 @@ coll = COLLECT(
     upx_exclude=[],
     name='tradia'
 )
-
