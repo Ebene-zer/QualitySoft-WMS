@@ -66,8 +66,10 @@ jobs:
           echo "version=$v" >> $env:GITHUB_OUTPUT
           echo "tag=$t" >> $env:GITHUB_OUTPUT
 
-      - name: Set up Inno Setup
-        uses: crazy-max/ghaction-inno-setup@v3
+      - name: Install Inno Setup (Chocolatey)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
 
       - name: Build installer (Inno Setup)
         run: iscc /DMyAppVersion=${{ steps.meta.outputs.version }} tradia.iss
