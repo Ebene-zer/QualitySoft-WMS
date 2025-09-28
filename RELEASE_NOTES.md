@@ -49,49 +49,49 @@ Getting Started
 - Installed executable: tradia.exe (via installer or portable build)
 - First launch will prompt Admin to change the temporary password
 
-Screenshots:
+Screenshots
 
 Core workflow
 
 - Login Window
-  ![Login](assets/screenshots/login.png)
+  ![Login](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/login.png)
 
 - Main Window / Dashboard
-  ![Main Window](assets/screenshots/main_window.png)
+  ![Main Window](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/main_window.png)
 
 - Product Management
-  ![Products](assets/screenshots/products.png)
+  ![Products](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/products.png)
 
 - Customer Management
-  ![Customers](assets/screenshots/customers.png)
+  ![Customers](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/customers.png)
 
 - New Invoice (Line Items, Discounts, Tax)
-  ![Invoice](assets/screenshots/invoice.png)
+  ![Invoice](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/invoice.png)
 
 - Receipt Viewer
-  ![Receipt](assets/screenshots/receipt.png)
+  ![Receipt](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/receipt.png)
 
 - Receipt Print Preview
-  ![Receipt Preview](assets/screenshots/receipt_preview.png)
+  ![Receipt Preview](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/receipt_preview.png)
 
 - Settings (Backup Path and Retention)
-  ![Settings](assets/screenshots/Settings.png)
+  ![Settings](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/Settings.png)
 
 - Activity Log / Auditing
-  ![Activity Log](assets/screenshots/activity_log.png)
+  ![Activity Log](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/activity_log.png)
 
 Reports & Analytics
 
 - Sales Overview
-  ![Sales](assets/screenshots/sales.png)
+  ![Sales](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/sales.png)
 
 - Graphs / Analytics
-  ![Graphs](assets/screenshots/graph.png)
+  ![Graphs](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/graph.png)
 
 Admin
 
 - Users Management
-  ![Users](assets/screenshots/users.png)
+  ![Users](https://github.com/Ebene-zer/Tradia/raw/main/assets/screenshots/users.png)
 
 Developer Notes
 - Tests, lint, and type-check commands are documented in README.md
