@@ -2,6 +2,8 @@
 
 Version: 1.0.0
 
+[Release Notes (v1.0.0) — includes screenshots of key features](RELEASE_NOTES.md)
+
 An easy-to-use Wholesale Management System (WMS) for Windows desktops (FREE / open-source edition). Manage products, customers, invoices, receipts, users, backups, and view an activity log for auditing. Offline, self‑contained.
 
 ## Author
